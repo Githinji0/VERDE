@@ -232,7 +232,14 @@ class Simulation(Base):
     pasteurization = Column(String(50), default="ON")
     language = Column(String(50), default="FASTEXPR")
     
-    # Diagnostics & Logs
+    # Diagnostics & Telemetry
+    remote_status = Column(String(50), nullable=True)
+    diagnostic_code = Column(String(50), default="NONE")
+    root_cause_type = Column(String(100), nullable=True)
+    root_cause_confidence = Column(String(20), default="UNKNOWN")  # HIGH, MEDIUM, LOW, UNKNOWN
+    position_count = Column(Integer, nullable=True)
+    diagnostic_details = Column(JSON, default=dict)
+    
     retry_count = Column(Integer, default=0)
     diagnostic_reason = Column(Text, nullable=True)
     possible_cause = Column(Text, nullable=True)

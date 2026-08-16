@@ -48,8 +48,19 @@ class ResearchWorker:
         )
 
     async def _process_loop(self):
+        last_sweep = 0.0
         while self._is_running:
             try:
+                # Periodic simulation reconciliation sweep
+                now_t = asyncio.get_event_loop().time()
+                if now_t - last_sweep > 5.0:
+                    last_sweep = now_t
+                    try:
+                        async with AsyncSessionFactory() as session:
+                            await simulation_orchestrator.reconcile_running_simulations(session)
+                    except Exception:
+                        pass
+
                 # Wait for next job with timeout to check running flag
                 try:
                     priority, job_id, job_type, payload = await asyncio.wait_for(job_queue.dequeue_job(), timeout=2.0)

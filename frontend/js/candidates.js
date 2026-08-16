@@ -249,12 +249,19 @@ export async function populateCandidateModal(candidateId) {
 
         // Mutate handler
         document.getElementById("btn-modal-mutate")?.addEventListener("click", async () => {
+            const mutBtn = document.getElementById("btn-modal-mutate");
             const mutContainer = document.getElementById("mutation-results");
-            mutContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i data-lucide="loader" class="spin"></i> Generating targeted mutations...</div>`;
+            if (mutBtn) {
+                mutBtn.disabled = true;
+                mutBtn.innerHTML = `<i data-lucide="loader" class="spin"></i> Synthesizing...`;
+            }
+            mutContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i data-lucide="loader" class="spin"></i> Synthesizing & preflighting targeted mutations...</div>`;
             if (window.lucide) window.lucide.createIcons();
 
             try {
                 const res = await api.mutateCandidate(c.id);
+                showToast(`Synthesized ${res.mutations.length} near-miss hypothesis mutations.`, "success");
+                
                 mutContainer.innerHTML = `
                     <div class="card" style="background-color: var(--verde-pale); border-color: var(--verde-pale-border); margin-top: 12px;">
                         <h4 style="font-size: 13px; font-weight: 700; color: var(--verde-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
@@ -264,8 +271,11 @@ export async function populateCandidateModal(candidateId) {
                             ${res.mutations.map(m => `
                                 <div style="background: #ffffff; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--verde-pale-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                                        <span class="badge badge-info">${m.mutation_type}</span>
-                                        <button class="btn btn-primary btn-sm" onclick="window.verdeUI.closeCandidateModal(); window.verdeUI.simulateCandidate('${m.candidate_id || c.id}')" style="font-size: 11px; padding: 3px 8px;">
+                                        <div style="display: flex; align-items: center; gap: 6px;">
+                                            <span class="badge badge-info">${m.mutation_type}</span>
+                                            ${renderBadge(m.preflight_status || 'PASS')}
+                                        </div>
+                                        <button class="btn btn-primary btn-sm" onclick="window.verdeUI.closeCandidateModal(); window.verdeUI.simulateCandidate('${m.candidate_id}')" style="font-size: 11px; padding: 3px 8px;">
                                             <i data-lucide="play" style="width: 11px; height: 11px;"></i> Simulate Variant
                                         </button>
                                     </div>
@@ -279,6 +289,13 @@ export async function populateCandidateModal(candidateId) {
                 if (window.lucide) window.lucide.createIcons();
             } catch (e) {
                 mutContainer.innerHTML = `<div class="card" style="color: var(--status-danger);">Mutation generation notice: ${e.message}</div>`;
+                showToast(`Mutation failed: ${e.message}`, "error");
+            } finally {
+                if (mutBtn) {
+                    mutBtn.disabled = false;
+                    mutBtn.innerHTML = `<i data-lucide="git-branch"></i> Synthesize Near-Miss Mutations`;
+                    if (window.lucide) window.lucide.createIcons();
+                }
             }
         });
 

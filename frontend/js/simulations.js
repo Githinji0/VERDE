@@ -47,7 +47,7 @@ function updateStatsCounters(sims) {
     const total = sims.length;
     const valid = sims.filter(s => s.has_valid_metrics || s.metrics_status === 'AVAILABLE').length;
     const running = sims.filter(s => s.status === 'RUNNING' || s.status === 'SUBMITTING').length;
-    const failed = sims.filter(s => s.classification === 'TECHNICAL_FAILURE' || s.portfolio_status === 'EMPTY').length;
+    const failed = sims.filter(s => s.classification === 'TECHNICAL_FAILURE' || s.classification === 'REMOTE_FAILURE' || s.classification === 'AUTH_FAILURE' || s.classification === 'ALPHA_FAILURE' || s.classification === 'PORTFOLIO_EMPTY' || s.portfolio_status === 'EMPTY').length;
 
     const countAll = document.getElementById("sim-count-all");
     const countValid = document.getElementById("sim-count-valid");
@@ -73,7 +73,7 @@ function renderTableBody(sims) {
     } else if (currentFilter === 'RUNNING') {
         filtered = filtered.filter(s => s.status === 'RUNNING' || s.status === 'SUBMITTING');
     } else if (currentFilter === 'FAILED') {
-        filtered = filtered.filter(s => s.classification === 'TECHNICAL_FAILURE' || s.portfolio_status === 'EMPTY');
+        filtered = filtered.filter(s => s.classification !== 'VALID_METRICS' && s.status !== 'RUNNING' && s.status !== 'SUBMITTING');
     }
 
     if (currentSearch.trim()) {
@@ -115,7 +115,7 @@ function renderTableBody(sims) {
     if (emptyState) emptyState.style.display = "none";
 
     tbody.innerHTML = filtered.map(s => {
-        const isTechFail = s.classification === "TECHNICAL_FAILURE" || s.portfolio_status === "EMPTY";
+        const showDiag = s.classification !== "VALID_METRICS" && s.status !== "RUNNING" && s.status !== "SUBMITTING";
         const isRunning = s.status === "RUNNING" || s.status === "SUBMITTING";
 
         return `
@@ -156,7 +156,7 @@ function renderTableBody(sims) {
                 <td style="font-size: 13px;">${formatBps(s.margin_bps)}</td>
                 <td style="white-space: nowrap;">
                     <div class="table-action-group">
-                        ${isTechFail ? `
+                        ${showDiag ? `
                             <button class="btn-action-diag" onclick="window.verdeUI.openDiagnosticModal('${s.id}')" title="Inspect Diagnostic Reason">
                                 <i data-lucide="alert-triangle"></i>
                                 <span>Diagnostics</span>

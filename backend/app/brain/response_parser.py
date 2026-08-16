@@ -1,43 +1,43 @@
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 from backend.app.core.logging import verde_logger
+from backend.app.research.diagnostics import simulation_diagnostics
 
 
 class BrainResponseParser:
     """
     Parses raw WorldQuant BRAIN simulation responses.
-    Strictly differentiates TECHNICAL_FAILURE (empty portfolio, missing metrics, parser failure)
-    from true ALPHA_FAILURE (valid low Sharpe, high turnover).
-    NEVER converts missing metrics to 0.0.
+    Strictly differentiates:
+      - VALID_METRICS / SUCCESS
+      - PORTFOLIO_EMPTY (simulation completed, but no positions taken)
+      - METRICS_UNAVAILABLE (metrics absent because portfolio was empty)
+      - ALPHA_FAILURE (syntax error, unsupported operator, constant signal)
+      - REMOTE_FAILURE (HTTP 429/500/timeout)
+      - AUTH_FAILURE (HTTP 401/403)
+      - PARSER_FAILURE (malformed JSON / unexpected schema)
+    NEVER converts missing metrics to 0.0 or fabricates metrics.
     """
 
     @staticmethod
-    def parse_simulation_response(data: Dict[str, Any]) -> Dict[str, Any]:
+    def parse_simulation_response(
+        data: Any,
+        expression: str = "",
+        settings_dict: Optional[Dict[str, Any]] = None,
+        http_status: int = 200,
+        simulation_id: Optional[str] = None,
+        brain_sim_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
-        Parses simulation output from WorldQuant BRAIN.
-        
-        Returns:
-            {
-                "classification": "VALID_METRICS" | "TECHNICAL_FAILURE" | "ALPHA_FAILURE",
-                "portfolio_status": "VALID" | "EMPTY" | "UNKNOWN",
-                "metrics_status": "AVAILABLE" | "MISSING" | "PARSE_ERROR",
-                "sharpe": float | None,
-                "fitness": float | None,
-                "turnover": float | None,
-                "margin_bps": float | None,
-                "returns_annualized": float | None,
-                "drawdown_max": float | None,
-                "long_count": int | None,
-                "short_count": int | None,
-                "diagnostic_reason": str | None,
-                "possible_cause": str | None,
-                "has_valid_metrics": bool
-            }
+        Parses simulation output from WorldQuant BRAIN using the SimulationDiagnosticEngine.
         """
         if not isinstance(data, dict):
             return {
-                "classification": "TECHNICAL_FAILURE",
+                "classification": "PARSER_FAILURE",
+                "remote_status": "PARSE_ERROR",
+                "portfolio_state": "UNKNOWN",
                 "portfolio_status": "UNKNOWN",
+                "metrics_state": "PARSE_ERROR",
                 "metrics_status": "PARSE_ERROR",
+                "diagnostic_code": "INVALID_RESPONSE_TYPE",
                 "sharpe": None,
                 "fitness": None,
                 "turnover": None,
@@ -46,120 +46,29 @@ class BrainResponseParser:
                 "drawdown_max": None,
                 "long_count": None,
                 "short_count": None,
+                "position_count": 0,
                 "diagnostic_reason": "Invalid response payload format (non-dictionary received)",
-                "possible_cause": "BRAIN remote API returned unexpected content",
-                "has_valid_metrics": False
+                "possible_cause": "BRAIN remote API returned unexpected content or invalid JSON",
+                "has_valid_metrics": False,
+                "root_cause": {
+                    "type": "RESPONSE_SCHEMA_MISMATCH",
+                    "confidence": "HIGH",
+                    "message": "Expected JSON dictionary response from BRAIN endpoint.",
+                    "evidence": [f"Received data of type: {type(data).__name__}"]
+                },
+                "evidence": [f"Received non-dictionary data type: {type(data).__name__}"],
+                "component_tests": [],
+                "signal_stats": {}
             }
 
-        # Check for remote error/exception in response
-        if "error" in data or "message" in data and not data.get("records"):
-            err_msg = data.get("error") or data.get("message") or "Remote error"
-            return {
-                "classification": "TECHNICAL_FAILURE",
-                "portfolio_status": "EMPTY",
-                "metrics_status": "MISSING",
-                "sharpe": None,
-                "fitness": None,
-                "turnover": None,
-                "margin_bps": None,
-                "returns_annualized": None,
-                "drawdown_max": None,
-                "long_count": None,
-                "short_count": None,
-                "diagnostic_reason": f"BRAIN returned error message: {err_msg}",
-                "possible_cause": "Remote compilation, syntax, or execution failure in BRAIN engine",
-                "has_valid_metrics": False
-            }
-
-        # Check for portfolio summary/metrics block
-        # BRAIN returns metrics in records/summary/pnl/returns/stats
-        records = data.get("records") or data.get("pnl") or data.get("result")
-        stats = data.get("stats") or data.get("summary") or {}
-        
-        # Check if portfolio is empty (zero trades, zero positions, or empty PnL)
-        pnl_records = data.get("records", [])
-        if isinstance(pnl_records, list) and len(pnl_records) == 0 and not stats:
-            return {
-                "classification": "TECHNICAL_FAILURE",
-                "portfolio_status": "EMPTY",
-                "metrics_status": "MISSING",
-                "sharpe": None,
-                "fitness": None,
-                "turnover": None,
-                "margin_bps": None,
-                "returns_annualized": None,
-                "drawdown_max": None,
-                "long_count": None,
-                "short_count": None,
-                "diagnostic_reason": "Simulation completed but portfolio is empty (no positions taken).",
-                "possible_cause": "Alpha expression produced constant or identical values across all instruments.",
-                "has_valid_metrics": False
-            }
-
-        # Extract numeric metrics if present
-        def get_float(val: Any) -> Optional[float]:
-            if val is None or val == "" or val == "N/A" or val == "null":
-                return None
-            try:
-                f = float(val)
-                if f != f:  # NaN check
-                    return None
-                return f
-            except (ValueError, TypeError):
-                return None
-
-        # Look in stats or root dict
-        sharpe = get_float(stats.get("sharpe") or data.get("sharpe"))
-        fitness = get_float(stats.get("fitness") or data.get("fitness"))
-        turnover = get_float(stats.get("turnover") or data.get("turnover"))
-        margin_bps = get_float(stats.get("margin") or data.get("margin") or stats.get("margin_bps"))
-        returns = get_float(stats.get("returns") or stats.get("pnl") or data.get("returns"))
-        drawdown = get_float(stats.get("drawdown") or stats.get("max_drawdown") or data.get("drawdown"))
-        long_count = stats.get("longCount") if stats.get("longCount") is not None else data.get("longCount")
-        short_count = stats.get("shortCount") if stats.get("shortCount") is not None else data.get("shortCount")
-
-        # Determine if metrics exist
-        if sharpe is None or fitness is None:
-            # Check if empty portfolio was the cause
-            is_empty = (
-                (long_count == 0 and short_count == 0) or
-                (isinstance(pnl_records, list) and len(pnl_records) == 0 and (long_count is None or long_count == 0))
-            )
-            portfolio_status = "EMPTY" if is_empty else "UNKNOWN"
-            return {
-                "classification": "TECHNICAL_FAILURE",
-                "portfolio_status": portfolio_status,
-                "metrics_status": "MISSING",
-                "sharpe": None,
-                "fitness": None,
-                "turnover": turnover,
-                "margin_bps": margin_bps,
-                "returns_annualized": returns,
-                "drawdown_max": drawdown,
-                "long_count": long_count,
-                "short_count": short_count,
-                "diagnostic_reason": "Portfolio metrics (Sharpe/Fitness) are missing or undefined.",
-                "possible_cause": "Insufficient trades, constant signal, or unhandled data lookback issues.",
-                "has_valid_metrics": False
-            }
-
-        # Valid metrics extracted successfully!
-        return {
-            "classification": "VALID_METRICS",
-            "portfolio_status": "VALID",
-            "metrics_status": "AVAILABLE",
-            "sharpe": round(sharpe, 4),
-            "fitness": round(fitness, 4),
-            "turnover": round(turnover, 4) if turnover is not None else None,
-            "margin_bps": round(margin_bps, 2) if margin_bps is not None else None,
-            "returns_annualized": round(returns, 4) if returns is not None else None,
-            "drawdown_max": round(drawdown, 4) if drawdown is not None else None,
-            "long_count": int(long_count) if long_count is not None else None,
-            "short_count": int(short_count) if short_count is not None else None,
-            "diagnostic_reason": None,
-            "possible_cause": None,
-            "has_valid_metrics": True
-        }
+        return simulation_diagnostics.diagnose_simulation(
+            raw_response=data,
+            expression=expression or data.get("expression") or "",
+            settings_dict=settings_dict or {},
+            http_status=http_status,
+            simulation_id=simulation_id,
+            brain_sim_id=brain_sim_id or data.get("id") or data.get("simulation_id")
+        )
 
 
 response_parser = BrainResponseParser()

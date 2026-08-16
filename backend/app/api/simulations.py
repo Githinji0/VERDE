@@ -21,6 +21,9 @@ async def list_simulations(
     db: AsyncSession = Depends(get_db)
 ):
     """Lists simulations with pagination and status filters."""
+    # Reconcile any active running/submitting simulations before returning
+    await simulation_orchestrator.reconcile_running_simulations(db)
+
     query = select(Simulation).options(
         selectinload(Simulation.candidate),
         selectinload(Simulation.metrics)
@@ -78,7 +81,11 @@ async def get_simulation_details(simulation_id: str, db: AsyncSession = Depends(
     if not s:
         raise HTTPException(status_code=404, detail="Simulation not found")
 
+    from backend.app.research.diagnostics import SimulationDiagnosticEngine
+
     m = s.metrics
+    sanitized_raw = SimulationDiagnosticEngine.sanitize_telemetry(s.raw_response) if s.raw_response else None
+
     return {
         "id": s.id,
         "candidate_id": s.candidate_id,
@@ -89,6 +96,13 @@ async def get_simulation_details(simulation_id: str, db: AsyncSession = Depends(
         "classification": s.classification,
         "portfolio_status": s.portfolio_status,
         "metrics_status": s.metrics_status,
+        "remote_status": s.remote_status or s.status,
+        "diagnostic_code": s.diagnostic_code or "NONE",
+        "root_cause_type": s.root_cause_type,
+        "root_cause_confidence": s.root_cause_confidence,
+        "position_count": s.position_count,
+        "why_not_proven": (s.diagnostic_details or {}).get("why_not_proven") or (s.diagnostic_details or {}).get("root_cause", {}).get("why_not_proven"),
+        "diagnostic_details": s.diagnostic_details or {},
         "universe": s.universe,
         "region": s.region,
         "delay": s.delay,
@@ -108,7 +122,7 @@ async def get_simulation_details(simulation_id: str, db: AsyncSession = Depends(
         } if m else None,
         "diagnostic_reason": s.diagnostic_reason,
         "possible_cause": s.possible_cause,
-        "raw_response": s.raw_response,
+        "raw_response": sanitized_raw,
         "submitted_at": s.submitted_at.isoformat() if s.submitted_at else None,
         "completed_at": s.completed_at.isoformat() if s.completed_at else None
     }
@@ -121,6 +135,8 @@ from backend.app.database.models import AlphaCandidate, BrainConnection, BrainSe
 @router.post("/{simulation_id}/poll")
 async def poll_simulation(simulation_id: str, db: AsyncSession = Depends(get_db)):
     """Polls remote BRAIN API status and updates simulation state."""
+    await simulation_orchestrator.reconcile_running_simulations(db)
+
     stmt = select(Simulation).where(Simulation.id == simulation_id).options(
         selectinload(Simulation.candidate),
         selectinload(Simulation.metrics)

@@ -50,9 +50,11 @@ export function renderBadge(status, text) {
     let badgeClass = "badge-info";
     const s = String(status).toUpperCase();
 
-    if (s.includes("PASS") || s.includes("SUCCESS") || s.includes("COMPLETE") || s.includes("VALID") || s.includes("CONNECTED")) {
+    if (s.includes("PORTFOLIO_EMPTY") || s === "EMPTY") {
+        badgeClass = "badge-warning";
+    } else if (s.includes("PASS") || s.includes("SUCCESS") || s.includes("COMPLETE") || s.includes("VALID") || s.includes("CONNECTED")) {
         badgeClass = "badge-success";
-    } else if (s.includes("REJECT") || s.includes("FAIL") || s.includes("ERROR") || s.includes("EMPTY") || s.includes("DISCONNECTED")) {
+    } else if (s.includes("REJECT") || s.includes("FAIL") || s.includes("ERROR") || s.includes("DISCONNECTED")) {
         badgeClass = "badge-danger";
     } else if (s.includes("WARN") || s.includes("NEAR_MISS") || s.includes("REGENERATE") || s.includes("RUNNING") || s.includes("SUBMITTED")) {
         badgeClass = "badge-warning";

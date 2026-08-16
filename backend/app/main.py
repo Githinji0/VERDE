@@ -67,6 +67,23 @@ async def lifespan(app: FastAPI):
         component="DATABASE",
         message="Database tables initialized and initial registries seeded."
     )
+    # Reconcile orphaned running simulations on startup
+    try:
+        from backend.app.brain.simulation import simulation_orchestrator
+        async with AsyncSessionFactory() as session:
+            reconciled = await simulation_orchestrator.reconcile_running_simulations(session)
+            verde_logger.log_event(
+                event="RECONCILE_ON_STARTUP",
+                component="SYSTEM",
+                message=f"Startup simulation reconciliation complete: {reconciled} running simulations resolved."
+            )
+    except Exception as e:
+        verde_logger.log_event(
+            event="RECONCILE_STARTUP_ERROR",
+            severity="WARNING",
+            component="SYSTEM",
+            message=f"Error in startup simulation reconciliation: {str(e)}"
+        )
     await research_worker.start()
     yield
     # Shutdown

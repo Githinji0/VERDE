@@ -1,3 +1,5 @@
+import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -9,6 +11,7 @@ from backend.app.database.models import AlphaCandidate, AlphaLineage, PreflightR
 from backend.app.database.session import get_db
 from backend.app.generation.hypothesis_engine import hypothesis_engine
 from backend.app.generation.preflight import preflight_engine
+from backend.app.generation.similarity import compute_expression_hash, compute_structure_hash
 from backend.app.research.optimization import candidate_optimizer, classify_candidate_tier
 
 router = APIRouter(prefix="/api/candidates", tags=["Alpha Candidates"])
@@ -222,13 +225,64 @@ async def simulate_candidate(candidate_id: str, req: CandidateSimulateRequest, d
 
 @router.post("/{candidate_id}/mutate")
 async def mutate_candidate(candidate_id: str, db: AsyncSession = Depends(get_db)):
-    """Generates targeted mutations for near-miss refinement."""
+    """Generates targeted mutations for near-miss refinement, preflights them, and persists candidate records."""
     stmt = select(AlphaCandidate).where(AlphaCandidate.id == candidate_id)
     res = await db.execute(stmt)
-    c = res.scalar_one_or_none()
+    parent = res.scalar_one_or_none()
 
-    if not c:
+    if not parent:
         raise HTTPException(status_code=404, detail="Candidate not found")
 
-    mutations = candidate_optimizer.generate_mutations(c.expression, c.id)
-    return {"parent_id": c.id, "mutations": mutations}
+    raw_mutations = candidate_optimizer.generate_mutations(parent.expression, parent.id)
+    created_mutations = []
+
+    for mut_item in raw_mutations:
+        expr = mut_item["expression"]
+        expr_hash = compute_expression_hash(expr)
+
+        # Check if candidate with this expression already exists
+        c_stmt = select(AlphaCandidate).where(AlphaCandidate.expression_hash == expr_hash)
+        c_res = await db.execute(c_stmt)
+        existing_c = c_res.scalar_one_or_none()
+
+        if existing_c:
+            cand = existing_c
+        else:
+            # Run preflight validation
+            preflight = await preflight_engine.run_preflight(expr, parent.family_code, db)
+
+            cand = AlphaCandidate(
+                id=str(uuid.uuid4()),
+                expression=expr,
+                expression_hash=expr_hash,
+                structure_hash=compute_structure_hash(expr),
+                family_code=parent.family_code,
+                parent_id=parent.id,
+                mutation_type=mut_item.get("mutation_type"),
+                generation_reason=mut_item.get("generation_reason"),
+                tier="TIER_3_NEAR_MISS",
+                preflight_status=preflight.get("decision", "PASS"),
+                preflight_reason=preflight.get("reason", "Targeted hypothesis mutation"),
+                complexity_score=preflight.get("complexity_score", 1.0),
+                compatibility_score=preflight.get("compatibility_score", 1.0),
+                constant_signal_risk=preflight.get("constant_signal_risk", 0.0),
+                fields_used=list(preflight.get("fields_used", [])),
+                operators_used=list(preflight.get("operators_used", [])),
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(cand)
+
+        created_mutations.append({
+            "candidate_id": cand.id,
+            "expression": cand.expression,
+            "mutation_type": mut_item.get("mutation_type"),
+            "preflight_status": cand.preflight_status,
+            "generation_reason": mut_item.get("generation_reason"),
+            "changed_lookback": mut_item.get("changed_lookback"),
+            "changed_transformation": mut_item.get("changed_transformation"),
+            "changed_group": mut_item.get("changed_group")
+        })
+
+    await db.commit()
+
+    return {"parent_id": parent.id, "mutations": created_mutations}

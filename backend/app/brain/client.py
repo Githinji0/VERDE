@@ -158,7 +158,7 @@ class BrainClient:
                             message=f"Authentication failed during simulation submission (Status {response.status_code})"
                         )
                         return {
-                            "status": "TECHNICAL_FAILURE",
+                            "status": "AUTH_FAILURE",
                             "error_code": f"AUTH_ERROR_{response.status_code}",
                             "error_message": "BRAIN session is unauthorized or expired.",
                             "status_code": response.status_code
@@ -175,7 +175,7 @@ class BrainClient:
                             await asyncio.sleep(1.5 * attempt)
                             continue
                         return {
-                            "status": "TECHNICAL_FAILURE",
+                            "status": "REMOTE_FAILURE",
                             "error_code": f"REMOTE_ERROR_{response.status_code}",
                             "error_message": f"Server error from BRAIN API (Status {response.status_code})",
                             "status_code": response.status_code

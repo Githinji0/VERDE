@@ -38,7 +38,7 @@ def test_parse_empty_portfolio_response():
     }
 
     res = response_parser.parse_simulation_response(data)
-    assert res["classification"] == "TECHNICAL_FAILURE"
+    assert res["classification"] == "PORTFOLIO_EMPTY"
     assert res["portfolio_status"] == "EMPTY"
     assert res["metrics_status"] == "MISSING"
     assert res["has_valid_metrics"] is False
@@ -54,7 +54,7 @@ def test_parse_error_response():
     }
 
     res = response_parser.parse_simulation_response(data)
-    assert res["classification"] == "TECHNICAL_FAILURE"
+    assert res["classification"] == "ALPHA_FAILURE"
     assert res["has_valid_metrics"] is False
     assert res["sharpe"] is None
     assert res["fitness"] is None

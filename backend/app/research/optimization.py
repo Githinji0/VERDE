@@ -14,6 +14,10 @@ def classify_candidate_tier(
     """Classifies an alpha candidate into defined research quality tiers (Tier 0 to Tier 6)."""
     if classification == "TECHNICAL_FAILURE":
         return "TIER_0_TECHNICAL_FAILURE"
+    if classification == "PORTFOLIO_EMPTY":
+        return "TIER_1_PORTFOLIO_EMPTY"
+    if classification in ("ALPHA_FAILURE", "AUTH_FAILURE", "REMOTE_FAILURE"):
+        return "TIER_1_SIMULATION_FAILED"
     if preflight_decision == "REJECT":
         return "TIER_1_PREFLIGHT_REJECTED"
     if sharpe is None or fitness is None:

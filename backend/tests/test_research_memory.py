@@ -26,7 +26,7 @@ async def test_research_memory_updates_isolated_from_technical_failure():
         sim_tech = Simulation(
             candidate_id=cand.id,
             status="PORTFOLIO_EMPTY",
-            classification="TECHNICAL_FAILURE",
+            classification="PORTFOLIO_EMPTY",
             portfolio_status="EMPTY",
             metrics_status="MISSING"
         )
