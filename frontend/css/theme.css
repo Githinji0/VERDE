@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    /* Brand & Emerald Glow Palette */
+    --verde-primary: #15803d;
+    --verde-primary-hover: #166534;
+    --verde-accent: #22c55e;
+    --verde-accent-glow: rgba(34, 197, 94, 0.35);
+    --verde-neon: #4ade80;
+    --verde-dark: #07170c;
+    --verde-light: #86efac;
+    --verde-pale: #eef8f1;
+    --verde-pale-border: #bbf7d0;
+
+    /* Outer Frame & Sidebar (Dark Forest Black) */
+    --bg-outer: #09120b;
+    --bg-sidebar: #09120b;
+    --bg-sidebar-card: rgba(255, 255, 255, 0.05);
+    --bg-sidebar-card-hover: rgba(255, 255, 255, 0.09);
+    --border-sidebar: rgba(255, 255, 255, 0.08);
+
+    /* Main Canvas (Clean Modern Light Mint) */
+    --bg-canvas: #f2f6f3;
+    --bg-card: #ffffff;
+    --bg-card-dark: #0b1710;
+    --bg-card-dark-gradient: linear-gradient(145deg, #0e1c12 0%, #06110a 100%);
+    --bg-surface: #ffffff;
+    --border-color: #e3ece5;
+    --border-light: #f0f4f1;
+    
+    /* Typography */
+    --text-main: #0c150e;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    --text-white: #ffffff;
+    --text-sidebar: #9ca3af;
+    --text-sidebar-active: #ffffff;
+
+    /* Status Colors */
+    --status-success: #16a34a;
+    --status-success-bg: #dcfce7;
+    --status-warning: #d97706;
+    --status-warning-bg: #fef3c7;
+    --status-danger: #dc2626;
+    --status-danger-bg: #fee2e2;
+    --status-info: #0284c7;
+    --status-info-bg: #e0f2fe;
+
+    /* Badges & Tags */
+    --tag-orange-bg: #fef3e2;
+    --tag-orange-text: #b45309;
+    --tag-green-bg: #e8f7ec;
+    --tag-green-text: #15803d;
+    --tag-blue-bg: #e0f2fe;
+    --tag-blue-text: #0369a1;
+
+    /* Layout & Radii */
+    --font-family: 'Quicksand', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --sidebar-width: 250px;
+    --header-height: 70px;
+    --radius-pill: 9999px;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-xl: 26px;
+    --radius-canvas: 28px;
+
+    /* Soft Modern Shadows */
+    --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.03);
+    --shadow-card: 0 4px 20px -2px rgba(12, 21, 14, 0.04), 0 2px 6px -1px rgba(12, 21, 14, 0.02);
+    --shadow-dark-card: 0 10px 30px -5px rgba(0, 0, 0, 0.3), 0 0 20px rgba(34, 197, 94, 0.1);
+    --shadow-modal: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-family);
+    background-color: var(--bg-outer);
+    color: var(--text-main);
+    min-height: 100vh;
+    display: flex;
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea {
+    font-family: inherit;
+}

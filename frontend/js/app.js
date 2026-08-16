@@ -1,0 +1,174 @@
+import { api } from './api.js';
+import { renderDashboard } from './dashboard.js';
+import { renderAlphaLab } from './alpha_lab.js';
+import { renderGenerators } from './generators.js';
+import { renderSimulations } from './simulations.js';
+import { renderCandidates, populateCandidateModal } from './candidates.js';
+import { renderAnalytics } from './analytics.js';
+import { renderParetoLab } from './pareto_lab.js';
+import { renderResearchMemory } from './memory.js';
+import { renderAILab } from './ai_lab.js';
+import { renderBrainConnection } from './brain_connection.js';
+import { renderLogs, populateDiagnosticModal } from './logs.js';
+import { renderSettings } from './settings.js';
+import { showToast } from './utils.js';
+
+// Route Definitions
+const routes = {
+    'dashboard': { title: 'Dashboard', render: renderDashboard },
+    'alpha-lab': { title: 'Alpha Lab', render: renderAlphaLab },
+    'generators': { title: 'Generators', render: renderGenerators },
+    'families': { title: 'Research Families', render: renderAlphaLab },
+    'simulations': { title: 'Simulations', render: renderSimulations },
+    'candidates': { title: 'Candidates', render: renderCandidates },
+    'analytics': { title: 'Analytics', render: renderAnalytics },
+    'pareto': { title: 'Pareto Lab', render: renderParetoLab },
+    'memory': { title: 'Research Memory', render: renderResearchMemory },
+    'ai-lab': { title: 'AI Assistant', render: renderAILab },
+    'brain-connection': { title: 'BRAIN Connection', render: renderBrainConnection },
+    'logs': { title: 'Audit Logs', render: renderLogs },
+    'settings': { title: 'Settings', render: renderSettings }
+};
+
+let currentPage = 'dashboard';
+
+async function navigateTo(page) {
+    if (!routes[page]) page = 'dashboard';
+    currentPage = page;
+
+    // Update active class in sidebar
+    document.querySelectorAll('.nav-item').forEach(item => {
+        if (item.dataset.page === page) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    // Update title
+    const titleEl = document.getElementById('current-page-title');
+    if (titleEl) {
+        titleEl.textContent = routes[page].title;
+    }
+
+    // Render page
+    const container = document.getElementById('content-view');
+    if (container) {
+        try {
+            await routes[page].render(container);
+        } catch (err) {
+            console.error(`Render error on page ${page}:`, err);
+            container.innerHTML = `
+                <div class="card" style="border-left: 4px solid var(--status-danger);">
+                    <h3 class="card-title" style="color: var(--status-danger);">Failed to render ${routes[page].title}</h3>
+                    <p style="margin-top: 8px; color: var(--text-muted); font-size: 13px;">${err.message}</p>
+                    <button class="btn btn-outline btn-sm" style="margin-top: 12px;" onclick="window.verdeUI.navigateTo('${page}')">Retry</button>
+                </div>
+            `;
+        }
+        if (window.lucide && typeof window.lucide.createIcons === "function") {
+            try { window.lucide.createIcons(); } catch (e) { console.warn(e); }
+        }
+    }
+}
+
+// Global UI Object
+window.verdeUI = {
+    navigateTo,
+    openCandidateModal: (id) => {
+        const modal = document.getElementById("candidate-modal");
+        if (modal) {
+            modal.classList.add("active");
+            populateCandidateModal(id);
+        }
+    },
+    closeCandidateModal: () => {
+        const modal = document.getElementById("candidate-modal");
+        if (modal) modal.classList.remove("active");
+    },
+    openDiagnosticModal: (id) => {
+        const modal = document.getElementById("diagnostic-modal");
+        if (modal) {
+            modal.classList.add("active");
+            populateDiagnosticModal(id);
+        }
+    },
+    closeDiagnosticModal: () => {
+        const modal = document.getElementById("diagnostic-modal");
+        if (modal) modal.classList.remove("active");
+    },
+    openLogDetailModal: (id) => {
+        const modal = document.getElementById("diagnostic-modal");
+        if (modal) {
+            modal.classList.add("active");
+            populateDiagnosticModal(id);
+        }
+    },
+    simulateCandidate: async (id) => {
+        try {
+            showToast("Submitting candidate simulation to BRAIN...", "info");
+            const res = await api.simulateCandidate(id, {});
+            showToast(`Simulation ${res.status}: BRAIN ID ${res.brain_sim_id || 'Pending'}`, "success");
+            navigateTo('simulations');
+        } catch (err) {
+            showToast(`Simulation submission failed: ${err.message}`, "error");
+        }
+    },
+    pollSimulation: async (id) => {
+        try {
+            const res = await api.pollSimulation(id);
+            showToast(`Simulation ${id.substring(0,8)} status: ${res.status}`, "info");
+            navigateTo('simulations');
+        } catch (err) {
+            showToast(`Poll failed: ${err.message}`, "error");
+        }
+    },
+    handleQuickSearch: (query) => {
+        if (!query) return;
+        query = query.toLowerCase();
+        if (query.includes('sim') || query.includes('run')) navigateTo('simulations');
+        else if (query.includes('cand') || query.includes('expr')) navigateTo('candidates');
+        else if (query.includes('gen') || query.includes('batch')) navigateTo('generators');
+        else if (query.includes('fam') || query.includes('mom')) navigateTo('families');
+        else if (query.includes('pareto')) navigateTo('pareto');
+        else if (query.includes('ai') || query.includes('chat')) navigateTo('ai-lab');
+        else if (query.includes('brain') || query.includes('auth')) navigateTo('brain-connection');
+        else if (query.includes('log')) navigateTo('logs');
+    }
+};
+
+function initApp() {
+    // Bind navigation clicks
+    document.querySelectorAll(".nav-item").forEach(item => {
+        item.addEventListener("click", () => {
+            const page = item.dataset.page;
+            if (page) {
+                window.location.hash = page;
+                navigateTo(page);
+            }
+        });
+    });
+
+    // Hash change handler
+    window.addEventListener("hashchange", () => {
+        const page = window.location.hash.replace('#', '');
+        navigateTo(page);
+    });
+
+    // Bind header status pill click
+    document.getElementById("header-brain-status")?.addEventListener("click", () => {
+        window.location.hash = "brain-connection";
+        navigateTo("brain-connection");
+    });
+
+    // Check initial hash or load dashboard
+    const initialPage = window.location.hash.replace('#', '') || 'dashboard';
+    navigateTo(initialPage);
+}
+
+// Immediate execution check
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initApp);
+} else {
+    initApp();
+}

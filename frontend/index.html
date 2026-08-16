@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VERDE | WorldQuant BRAIN Alpha Research Platform</title>
+    
+    <!-- Quicksand Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/layout.css">
+    <link rel="stylesheet" href="/static/css/components.css">
+    <link rel="stylesheet" href="/static/css/pages.css">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar">
+            <div class="sidebar-top">
+                <!-- Brand Logo Header -->
+                <div class="sidebar-header">
+                    <a href="#dashboard" class="logo-container">
+                        <div class="logo-icon-bars">
+                            <div class="logo-bar"></div>
+                            <div class="logo-bar"></div>
+                            <div class="logo-bar"></div>
+                        </div>
+                        <div class="logo-text">VERDE</div>
+                    </a>
+                </div>
+
+                <!-- Workspace Selector Card -->
+                <div class="workspace-card" onclick="window.verdeUI.navigateTo('brain-connection')">
+                    <div class="workspace-left">
+                        <div class="workspace-badge">
+                            <i data-lucide="sparkles" style="width: 17px; height: 17px;"></i>
+                        </div>
+                        <div class="workspace-info">
+                            <span class="workspace-label">Team Workspace</span>
+                            <span class="workspace-name" id="sidebar-workspace-title">BRAIN Alpha Lab</span>
+                        </div>
+                    </div>
+                    <i data-lucide="chevron-down" style="width: 16px; height: 16px; color: #9ca3af;"></i>
+                </div>
+
+                <!-- Search Input -->
+                <div class="sidebar-search">
+                    <i data-lucide="search" style="width: 15px; height: 15px;"></i>
+                    <input type="text" placeholder="Search alphas..." id="sidebar-quick-search" oninput="window.verdeUI.handleQuickSearch(this.value)">
+                    <span class="search-shortcut">⌘+F</span>
+                </div>
+
+                <!-- Navigation List -->
+                <nav class="sidebar-nav">
+                    <div class="nav-section-title">Navigation</div>
+                    
+                    <a class="nav-item active" data-page="dashboard">
+                        <div class="nav-item-left">
+                            <i data-lucide="layout-dashboard"></i>
+                            <span>Dashboard</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="analytics">
+                        <div class="nav-item-left">
+                            <i data-lucide="bar-chart-2"></i>
+                            <span>Analytics</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="alpha-lab">
+                        <div class="nav-item-left">
+                            <i data-lucide="flask-conical"></i>
+                            <span>Alpha Lab</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="generators">
+                        <div class="nav-item-left">
+                            <i data-lucide="cpu"></i>
+                            <span>Generators</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="families">
+                        <div class="nav-item-left">
+                            <i data-lucide="library"></i>
+                            <span>Research Families</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="simulations">
+                        <div class="nav-item-left">
+                            <i data-lucide="play-circle"></i>
+                            <span>Simulations</span>
+                        </div>
+                        <span class="nav-pill-count" id="nav-sim-count">0</span>
+                    </a>
+
+                    <a class="nav-item" data-page="candidates">
+                        <div class="nav-item-left">
+                            <i data-lucide="file-code"></i>
+                            <span>Candidates</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="pareto">
+                        <div class="nav-item-left">
+                            <i data-lucide="target"></i>
+                            <span>Pareto Lab</span>
+                        </div>
+                        <span class="nav-pill-new">Pareto</span>
+                    </a>
+
+                    <a class="nav-item" data-page="memory">
+                        <div class="nav-item-left">
+                            <i data-lucide="brain"></i>
+                            <span>Research Memory</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="ai-lab">
+                        <div class="nav-item-left">
+                            <i data-lucide="sparkles"></i>
+                            <span>AI Assistant</span>
+                        </div>
+                        <span class="nav-pill-new">AI</span>
+                    </a>
+
+                    <a class="nav-item" data-page="brain-connection">
+                        <div class="nav-item-left">
+                            <i data-lucide="plug"></i>
+                            <span>BRAIN Connection</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="logs">
+                        <div class="nav-item-left">
+                            <i data-lucide="terminal"></i>
+                            <span>Audit Logs</span>
+                        </div>
+                    </a>
+                </nav>
+            </div>
+
+            <!-- Sidebar Bottom / User Profile -->
+            <div class="sidebar-bottom">
+                <a class="nav-item" data-page="settings">
+                    <div class="nav-item-left">
+                        <i data-lucide="settings"></i>
+                        <span>Settings</span>
+                    </div>
+                </a>
+
+                <div class="user-profile-card" onclick="window.verdeUI.navigateTo('settings')">
+                    <div class="user-avatar-wrap">
+                        <div class="user-avatar">AW</div>
+                        <div class="user-meta">
+                            <span class="user-name">Alex Williamson</span>
+                            <span class="user-tag">#dela-1974</span>
+                        </div>
+                    </div>
+                    <i data-lucide="more-vertical" style="width: 16px; height: 16px; color: #9ca3af;"></i>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Floating Canvas -->
+        <div id="main-wrapper">
+            <!-- Top Header -->
+            <header id="top-header">
+                <div class="header-left">
+                    <h1 class="page-title" id="current-page-title">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="status-pill" id="header-brain-status">
+                        <span class="status-dot offline" id="brain-dot"></span>
+                        <span id="brain-status-text">BRAIN: Disconnected</span>
+                    </div>
+
+                    <div class="icon-btn-pill" title="Notifications" onclick="window.verdeUI.navigateTo('logs')">
+                        <i data-lucide="bell" style="width: 18px; height: 18px;"></i>
+                        <span class="icon-badge-dot"></span>
+                    </div>
+
+                    <button class="btn-header-cta" id="main-header-action" onclick="window.verdeUI.navigateTo('alpha-lab')">
+                        <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                        <span id="header-action-label">Generate Alphas</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dynamic Viewport -->
+            <main id="content-view">
+                <!-- Injected via JavaScript -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Candidate Inspector Modal / Drawer -->
+    <div class="modal-overlay" id="candidate-modal">
+        <div class="modal-box" style="max-width: 760px;">
+            <div class="modal-header">
+                <h3 class="card-title"><i data-lucide="microscope"></i> Candidate Inspector</h3>
+                <button class="btn btn-outline btn-sm" onclick="window.verdeUI.closeCandidateModal()">&times;</button>
+            </div>
+            <div id="candidate-modal-body">
+                <!-- Injected -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Diagnostic Debug Modal -->
+    <div class="modal-overlay" id="diagnostic-modal">
+        <div class="modal-box" style="max-width: 680px;">
+            <div class="modal-header">
+                <h3 class="card-title" style="color: var(--status-warning);"><i data-lucide="alert-triangle"></i> Simulation Diagnostic Detail</h3>
+                <button class="btn btn-outline btn-sm" onclick="window.verdeUI.closeDiagnosticModal()">&times;</button>
+            </div>
+            <div id="diagnostic-modal-body">
+                <!-- Injected -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container"></div>
+
+    <!-- JavaScript Application Entry Point -->
+    <script type="module" src="/static/js/app.js"></script>
+</body>
+</html>
