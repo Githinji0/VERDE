@@ -86,11 +86,31 @@ async def get_simulation_details(simulation_id: str, db: AsyncSession = Depends(
     m = s.metrics
     sanitized_raw = SimulationDiagnosticEngine.sanitize_telemetry(s.raw_response) if s.raw_response else None
 
+    from backend.app.generation.ast_parser import ExpressionASTParser
+    expr_str = s.candidate.expression if s.candidate else ""
+    expr_hash = ExpressionASTParser.compute_expression_hash(expr_str) if expr_str else None
+    root_node = ExpressionASTParser.parse(expr_str) if expr_str else None
+
+    diag_details = s.diagnostic_details or {}
+    comp_tests = diag_details.get("component_tests") or []
+
+    expression_analysis = {
+        "expression": expr_str,
+        "expression_hash": expr_hash,
+        "root": {
+            "operator": root_node.name if root_node else "",
+            "category": root_node.category() if root_node else ""
+        },
+        "components": comp_tests
+    }
+
     return {
         "id": s.id,
         "candidate_id": s.candidate_id,
         "brain_sim_id": s.brain_sim_id,
-        "expression": s.candidate.expression if s.candidate else None,
+        "expression": expr_str,
+        "expression_hash": expr_hash,
+        "expression_analysis": expression_analysis,
         "family_code": s.candidate.family_code if s.candidate else None,
         "status": s.status,
         "classification": s.classification,

@@ -344,60 +344,11 @@ class SimulationDiagnosticEngine:
         return experiments
 
     @classmethod
-    def _evaluate_subexpression_hierarchy(cls, expression: str) -> List[Dict[str, Any]]:
-        """Deconstructs complex formula into layered diagnostic sub-expressions."""
-        steps = []
-        clean_expr = expression.strip()
-        if not clean_expr:
-            return steps
-
-        # Step 1: Base field
-        fields_found = [f for f in FIELD_REGISTRY.keys() if f in clean_expr]
-        base_field = fields_found[0] if fields_found else "returns"
-        steps.append({
-            "expression": base_field,
-            "stage": "BASE_FIELD",
-            "status": "VALID",
-            "notes": f"Field '{base_field}' is registered and temporally compatible with DAILY frequency."
-        })
-
-        # Step 2: Time-series operator
-        ts_match = re.search(r'(ts_\w+\([^,]+,\s*\d+\))', clean_expr)
-        if ts_match:
-            ts_expr = ts_match.group(1)
-            steps.append({
-                "expression": ts_expr,
-                "stage": "TIME_SERIES_TRANSFORM",
-                "status": "VALID",
-                "notes": "Time-series operator evaluates rolling window successfully."
-            })
-        else:
-            steps.append({
-                "expression": f"ts_mean({base_field}, 10)",
-                "stage": "TIME_SERIES_TRANSFORM",
-                "status": "VALID",
-                "notes": "10-day rolling mean operator."
-            })
-
-        # Step 3: Cross-sectional rank
-        if "rank(" in clean_expr:
-            steps.append({
-                "expression": f"rank(ts_mean({base_field}, 10))",
-                "stage": "CROSS_SECTIONAL_RANK",
-                "status": "VALID",
-                "notes": "Cross-sectional ranking normalizes signal from 0.0 to 1.0 across universe."
-            })
-
-        # Step 4: Group neutralization
-        if "group_neutralize(" in clean_expr:
-            steps.append({
-                "expression": clean_expr,
-                "stage": "GROUP_NEUTRALIZATION",
-                "status": "SUSPECT_UNPROVEN",
-                "notes": "Group neutralization de-means within subindustries. May interact with portfolio neutralization."
-            })
-
-        return steps
+    def _evaluate_subexpression_hierarchy(cls, expression: str, portfolio_state: str = "EMPTY") -> List[Dict[str, Any]]:
+        """Deconstructs complex formula into layered AST component hierarchy using canonical AST parser."""
+        from backend.app.generation.ast_parser import ast_parser
+        is_empty = (portfolio_state == "EMPTY")
+        return ast_parser.extract_component_hierarchy(expression, is_empty_portfolio=is_empty)
 
     @classmethod
     def _analyze_signal_characteristics(cls, expression: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -506,9 +457,26 @@ class SimulationDiagnosticEngine:
 
         all_evidence = (observed or []) + (proven or []) + (inferred or [])
 
+        from backend.app.generation.ast_parser import ExpressionASTParser
+        expr_hash = ExpressionASTParser.compute_expression_hash(expression) if expression else "N/A"
+        root_node = ExpressionASTParser.parse(expression) if expression else None
+
+        expression_analysis = {
+            "expression": expression,
+            "expression_hash": expr_hash,
+            "root": {
+                "operator": root_node.name if root_node else "",
+                "category": root_node.category() if root_node else ""
+            },
+            "components": component_tests or []
+        }
+
         result = {
             "simulation_id": sim_id_str,
             "brain_sim_id": brain_id_str,
+            "expression": expression,
+            "expression_hash": expr_hash,
+            "expression_analysis": expression_analysis,
             "http_status": http_status,
             "classification": classification,
             "remote_status": remote_status,
@@ -577,6 +545,9 @@ class SimulationDiagnosticEngine:
         why_not_str = d.get("why_not_proven")
         why_not_block = f"\nWhy Not Proven:\n{why_not_str}\n" if why_not_str else ""
 
+        comps = d.get("component_tests", [])
+        comp_lines = "\n".join([f"  {idx+1}. {c['expression']}\n     ({c['stage']}) -> {c['status']}" for idx, c in enumerate(comps)])
+
         banner = f"""
 ========================================================
 PORTFOLIO EMPTY DIAGNOSTIC (EVIDENCE-BASED)
@@ -587,6 +558,10 @@ BRAIN ID: {d.get('brain_sim_id')}
 
 Expression:
 {expression}
+Expression Hash: {d.get('expression_hash')}
+
+AST Component Hierarchy:
+{comp_lines}
 
 Configuration:
 Universe: {cfg.get('universe')}

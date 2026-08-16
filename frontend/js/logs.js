@@ -82,7 +82,8 @@ export async function populateDiagnosticModal(simulationId) {
         const details = s.diagnostic_details || {};
         const rootCause = details.root_cause || { type: s.root_cause_type || 'UNVERIFIED', confidence: s.root_cause_confidence || 'LOW', message: s.possible_cause || s.diagnostic_reason };
         const evCat = details.evidence_categorized || {};
-        const componentTests = details.component_tests || [];
+        const exprAnalysis = s.expression_analysis || details.expression_analysis || {};
+        const componentTests = exprAnalysis.components || details.component_tests || [];
         const pipeline = details.position_pipeline || {};
         const experiments = details.recommended_experiments || [];
         const whyNotProven = s.why_not_proven || details.why_not_proven || rootCause.why_not_proven;
@@ -131,9 +132,12 @@ export async function populateDiagnosticModal(simulationId) {
 
             <!-- Expression Box -->
             <div style="margin-bottom: 16px;">
-                <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px;">
-                    Evaluated Alpha Formula
-                </label>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px;">
+                        Evaluated Alpha Formula
+                    </label>
+                    ${s.expression_hash ? `<span style="font-size: 10.5px; color: var(--text-muted); font-family: monospace;">Hash: ${s.expression_hash.substring(0, 12)}...</span>` : ''}
+                </div>
                 <div class="code-expr" style="display: block; width: 100%; font-size: 12.5px; padding: 10px 12px; margin-top: 4px; border-radius: var(--radius-sm); box-sizing: border-box;">
                     ${s.expression || 'N/A'}
                 </div>

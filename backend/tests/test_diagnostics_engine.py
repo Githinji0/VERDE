@@ -211,3 +211,130 @@ def test_secret_redaction_in_telemetry():
     assert sanitized["session_cookie"] == "[REDACTED]"
     assert sanitized["auth_token"] == "[REDACTED]"
     assert sanitized["stats"]["longCount"] == 50
+
+
+def test_ast_hierarchy_test_a_rank_close():
+    from backend.app.generation.ast_parser import ast_parser
+    comps = ast_parser.extract_component_hierarchy("rank(close)")
+    exprs = [c["expression"] for c in comps]
+    stages = [c["stage"] for c in comps]
+    assert exprs == ["close", "rank(close)"]
+    assert stages == ["BASE_FIELD", "CROSS_SECTIONAL_RANK"]
+
+
+def test_ast_hierarchy_test_b_ts_mean_close_10():
+    from backend.app.generation.ast_parser import ast_parser
+    comps = ast_parser.extract_component_hierarchy("ts_mean(close, 10)")
+    exprs = [c["expression"] for c in comps]
+    stages = [c["stage"] for c in comps]
+    assert exprs == ["close", "ts_mean(close, 10)"]
+    assert stages == ["BASE_FIELD", "TIME_SERIES_TRANSFORM"]
+
+
+def test_ast_hierarchy_test_c_rank_ts_mean_close_10():
+    from backend.app.generation.ast_parser import ast_parser
+    comps = ast_parser.extract_component_hierarchy("rank(ts_mean(close, 10))")
+    exprs = [c["expression"] for c in comps]
+    stages = [c["stage"] for c in comps]
+    assert exprs == ["close", "ts_mean(close, 10)", "rank(ts_mean(close, 10))"]
+    assert stages == ["BASE_FIELD", "TIME_SERIES_TRANSFORM", "CROSS_SECTIONAL_RANK"]
+
+
+def test_ast_hierarchy_test_d_group_neutralize_rank_close():
+    from backend.app.generation.ast_parser import ast_parser
+    comps = ast_parser.extract_component_hierarchy("group_neutralize(rank(close), subindustry)")
+    exprs = [c["expression"] for c in comps]
+    stages = [c["stage"] for c in comps]
+    assert exprs == ["close", "rank(close)", "group_neutralize(rank(close), subindustry)"]
+    assert stages == ["BASE_FIELD", "CROSS_SECTIONAL_RANK", "GROUP_NEUTRALIZATION"]
+
+
+def test_ast_hierarchy_test_e_ts_mean_group_neutralize_rank_close_3():
+    from backend.app.generation.ast_parser import ast_parser
+    comps = ast_parser.extract_component_hierarchy("ts_mean(group_neutralize(rank(close), subindustry), 3)")
+    exprs = [c["expression"] for c in comps]
+    stages = [c["stage"] for c in comps]
+    
+    assert exprs == [
+        "close",
+        "rank(close)",
+        "group_neutralize(rank(close), subindustry)",
+        "ts_mean(group_neutralize(rank(close), subindustry), 3)"
+    ]
+    assert stages == [
+        "BASE_FIELD",
+        "CROSS_SECTIONAL_RANK",
+        "GROUP_NEUTRALIZATION",
+        "TIME_SERIES_TRANSFORM"
+    ]
+    # Verify no stale fabricated expressions appear!
+    assert "ts_mean(close, 10)" not in exprs
+    assert "rank(ts_mean(close, 10))" not in exprs
+
+
+def test_ast_hierarchy_test_f_group_neutralize_rank_ts_mean_returns_20():
+    from backend.app.generation.ast_parser import ast_parser
+    comps = ast_parser.extract_component_hierarchy("group_neutralize(rank(ts_mean(returns, 20)), subindustry)")
+    exprs = [c["expression"] for c in comps]
+    stages = [c["stage"] for c in comps]
+    
+    assert exprs == [
+        "returns",
+        "ts_mean(returns, 20)",
+        "rank(ts_mean(returns, 20))",
+        "group_neutralize(rank(ts_mean(returns, 20)), subindustry)"
+    ]
+    assert stages == [
+        "BASE_FIELD",
+        "TIME_SERIES_TRANSFORM",
+        "CROSS_SECTIONAL_RANK",
+        "GROUP_NEUTRALIZATION"
+    ]
+
+
+def test_simulation_switching_and_state_isolation():
+    """Verifies sequential evaluation of diagnostics for multiple simulations maintains isolated component hierarchies and expression hashes."""
+    sim_a = simulation_diagnostics.diagnose_simulation(
+        raw_response={"stats": {"longCount": 0, "shortCount": 0}},
+        expression="rank(close)",
+        simulation_id="SIM-A"
+    )
+    
+    sim_b = simulation_diagnostics.diagnose_simulation(
+        raw_response={"stats": {"longCount": 0, "shortCount": 0}},
+        expression="ts_mean(group_neutralize(rank(close), subindustry), 3)",
+        simulation_id="SIM-B"
+    )
+    
+    sim_c = simulation_diagnostics.diagnose_simulation(
+        raw_response={"stats": {"longCount": 0, "shortCount": 0}},
+        expression="ts_mean(returns, 5)",
+        simulation_id="SIM-C"
+    )
+    
+    # Assert Simulation A
+    assert sim_a["simulation_id"] == "SIM-A"
+    comps_a = [c["expression"] for c in sim_a["expression_analysis"]["components"]]
+    assert comps_a == ["close", "rank(close)"]
+    
+    # Assert Simulation B
+    assert sim_b["simulation_id"] == "SIM-B"
+    comps_b = [c["expression"] for c in sim_b["expression_analysis"]["components"]]
+    assert comps_b == [
+        "close",
+        "rank(close)",
+        "group_neutralize(rank(close), subindustry)",
+        "ts_mean(group_neutralize(rank(close), subindustry), 3)"
+    ]
+    assert "ts_mean(returns, 5)" not in comps_b
+    
+    # Assert Simulation C
+    assert sim_c["simulation_id"] == "SIM-C"
+    comps_c = [c["expression"] for c in sim_c["expression_analysis"]["components"]]
+    assert comps_c == ["returns", "ts_mean(returns, 5)"]
+    assert "group_neutralize(rank(close), subindustry)" not in comps_c
+    
+    # Verify expression hashes are distinct
+    assert sim_a["expression_hash"] != sim_b["expression_hash"]
+    assert sim_b["expression_hash"] != sim_c["expression_hash"]
+

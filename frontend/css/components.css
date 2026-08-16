@@ -721,3 +721,210 @@
 .toast.success { border-left: 4px solid var(--verde-accent); }
 .toast.error { border-left: 4px solid var(--status-danger); }
 .toast.info { border-left: 4px solid var(--status-info); }
+
+/* Unified Quantitative Telemetry Ribbon */
+.telemetry-ribbon-container {
+    background: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+    padding: 14px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+/* Left Hero Pill */
+.telemetry-badge-hero {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 14px 6px 10px;
+    background: #f8fafc;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.telemetry-badge-hero:hover {
+    border-color: var(--verde-primary);
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.12);
+}
+
+.pulse-indicator {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #16a34a;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.pulse-ring {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background-color: rgba(22, 163, 74, 0.35);
+    border-radius: 50%;
+    animation: pulse-ring-anim 2s infinite ease-out;
+}
+
+@keyframes pulse-ring-anim {
+    0% { transform: scale(0.6); opacity: 1; }
+    100% { transform: scale(1.6); opacity: 0; }
+}
+
+.telemetry-hero-details {
+    display: flex;
+    flex-direction: column;
+}
+
+.telemetry-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+}
+
+.telemetry-value {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text-main);
+    line-height: 1.1;
+}
+
+/* Center Visual Yield Progress Bar */
+.telemetry-yield-wrapper {
+    flex: 1;
+    min-width: 260px;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.yield-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11px;
+}
+
+.yield-bar-title {
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.yield-bar-percentage {
+    font-weight: 700;
+    color: #16a34a;
+    font-size: 11.5px;
+}
+
+.yield-progress-bar {
+    height: 10px;
+    width: 100%;
+    background: #e2e8f0;
+    border-radius: 6px;
+    display: flex;
+    overflow: hidden;
+    padding: 1.5px;
+    box-sizing: border-box;
+    gap: 2px;
+}
+
+.yield-segment {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.segment-valid {
+    background: linear-gradient(90deg, #22c55e, #16a34a);
+}
+
+.segment-running {
+    background: linear-gradient(90deg, #eab308, #ca8a04);
+}
+
+.segment-failed {
+    background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+/* Right Interactive Metric Filter Chips */
+.telemetry-chips-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.telemetry-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    background: #f8fafc;
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-sm);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.telemetry-chip:hover {
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+}
+
+.telemetry-chip.active {
+    border-color: var(--verde-primary);
+    background: #f0fdf4;
+    color: var(--verde-dark);
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.15);
+}
+
+.chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.dot-valid { background-color: #16a34a; }
+.dot-running { background-color: #eab308; }
+.dot-failed { background-color: #ef4444; }
+
+.chip-count {
+    font-weight: 800;
+    font-size: 12px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.chip-valid .chip-count { color: #16a34a; background: rgba(22, 163, 74, 0.1); }
+.chip-running .chip-count { color: #ca8a04; background: rgba(202, 138, 4, 0.1); }
+.chip-failed .chip-count { color: #ef4444; background: rgba(239, 68, 68, 0.1); }

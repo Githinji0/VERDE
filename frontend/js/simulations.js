@@ -58,6 +58,30 @@ function updateStatsCounters(sims) {
     if (countValid) countValid.textContent = valid;
     if (countRunning) countRunning.textContent = running;
     if (countFailed) countFailed.textContent = failed;
+
+    // Update Telemetry Yield Bar widths & percentages
+    const yieldRateEl = document.getElementById("sim-yield-rate");
+    const barValid = document.getElementById("bar-segment-valid");
+    const barRunning = document.getElementById("bar-segment-running");
+    const barFailed = document.getElementById("bar-segment-failed");
+
+    const validPct = total > 0 ? (valid / total * 100).toFixed(1) : '0.0';
+    const runningPct = total > 0 ? (running / total * 100).toFixed(1) : '0.0';
+    const failedPct = total > 0 ? (failed / total * 100).toFixed(1) : '0.0';
+
+    if (yieldRateEl) yieldRateEl.textContent = `${validPct}% Success Yield`;
+    if (barValid) {
+        barValid.style.width = `${validPct}%`;
+        barValid.title = `Valid Alphas: ${valid} (${validPct}%)`;
+    }
+    if (barRunning) {
+        barRunning.style.width = `${runningPct}%`;
+        barRunning.title = `In Progress: ${running} (${runningPct}%)`;
+    }
+    if (barFailed) {
+        barFailed.style.width = `${failedPct}%`;
+        barFailed.title = `Technical Failures: ${failed} (${failedPct}%)`;
+    }
 }
 
 function renderTableBody(sims) {
@@ -121,52 +145,38 @@ function renderTableBody(sims) {
         return `
             <tr>
                 <td>
-                    <span style="font-family: monospace; font-size: 12px; font-weight: 700; color: var(--text-muted); background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--border-light);">
-                        ${s.id.substring(0, 8)}
-                    </span>
-                </td>
-                <td style="max-width: 280px;">
-                    <div class="code-expr" style="font-size: 11.5px; padding: 6px 10px; max-height: 48px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${s.expression || ''}">
-                        ${s.expression || 'N/A'}
+                    <div style="font-family: monospace; font-size: 12px; font-weight: 700;">
+                        SIM-${s.id.substring(0, 8)}
                     </div>
+                    ${s.brain_sim_id ? `<div style="font-size: 11px; color: var(--text-muted);"><code>${s.brain_sim_id}</code></div>` : ''}
                 </td>
                 <td>
-                    <span class="badge badge-info" style="font-size: 11px;">${s.family_code || 'MOMENTUM'}</span>
+                    <code class="code-expr" style="font-size: 12px; max-width: 300px; display: inline-block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                        ${s.expression || 'N/A'}
+                    </code>
                 </td>
-                <td>
-                    ${isRunning ? `
-                        <span class="badge badge-warning" style="display: inline-flex; align-items: center; gap: 5px;">
-                            <i data-lucide="loader" class="spin" style="width: 12px; height: 12px;"></i> RUNNING
-                        </span>
-                    ` : renderBadge(s.status)}
-                </td>
+                <td><span class="badge badge-info">${s.family_code || 'GENERIC'}</span></td>
+                <td>${renderBadge(s.remote_status || s.status)}</td>
+                <td>${renderBadge(s.classification)}</td>
                 <td>${renderBadge(s.portfolio_status)}</td>
-                <td>${renderBadge(s.metrics_status)}</td>
+                <td>${formatMetric(s.sharpe, 2)}</td>
+                <td>${formatMetric(s.fitness, 2)}</td>
+                <td>${formatMetric(s.turnover, 3)}</td>
+                <td>${formatBps(s.margin_bps, 2)}</td>
                 <td>
-                    <strong style="color: ${s.sharpe >= 1.25 ? '#16a34a' : 'inherit'}; font-size: 13px;">
-                        ${formatMetric(s.sharpe)}
-                    </strong>
-                </td>
-                <td>
-                    <strong style="color: ${s.fitness >= 1.00 ? '#16a34a' : 'inherit'}; font-size: 13px;">
-                        ${formatMetric(s.fitness)}
-                    </strong>
-                </td>
-                <td style="font-size: 13px;">${formatMetric(s.turnover)}</td>
-                <td style="font-size: 13px;">${formatBps(s.margin_bps)}</td>
-                <td style="white-space: nowrap;">
-                    <div class="table-action-group">
+                    <div style="display: flex; gap: 6px; align-items: center;">
                         ${showDiag ? `
-                            <button class="btn-action-diag" onclick="window.verdeUI.openDiagnosticModal('${s.id}')" title="Inspect Diagnostic Reason">
-                                <i data-lucide="alert-triangle"></i>
-                                <span>Diagnostics</span>
+                            <button class="btn btn-outline btn-sm" onclick="window.verdeUI.openDiagnosticModal('${s.id}')" style="color: var(--status-warning); border-color: var(--status-warning);" title="View Telemetry Diagnostics">
+                                <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i> Diag
                             </button>
                         ` : ''}
-                        <button class="btn-action-icon" onclick="window.verdeUI.openCandidateModal('${s.candidate_id}')" title="Inspect Candidate Detail">
-                            <i data-lucide="eye"></i>
-                        </button>
-                        <button class="btn-action-icon" id="btn-poll-${s.id}" onclick="window.verdeUI.pollSimulationInline('${s.id}')" title="Poll Remote Status from BRAIN">
-                            <i data-lucide="refresh-cw"></i>
+                        ${isRunning ? `
+                            <button class="btn btn-outline btn-sm" onclick="window.verdeUI.pollSimulation('${s.id}')" title="Force Re-Poll BRAIN">
+                                <i data-lucide="refresh-cw" class="spin" style="width: 12px; height: 12px;"></i> Poll
+                            </button>
+                        ` : ''}
+                        <button class="btn btn-outline btn-sm" onclick="window.verdeUI.openCandidateModal('${s.candidate_id}')" title="Inspect Candidate">
+                            <i data-lucide="microscope" style="width: 12px; height: 12px;"></i>
                         </button>
                     </div>
                 </td>
@@ -184,23 +194,57 @@ export async function renderSimulations(container) {
     }
 
     container.innerHTML = `
-        <!-- Top Stats Row -->
-        <div class="kpi-row-grid" style="grid-template-columns: repeat(4, 1fr); margin-bottom: 20px;">
-            <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid var(--verde-primary);">
-                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Total Runs</div>
-                <div style="font-size: 24px; font-weight: 800; color: var(--text-main); margin-top: 4px;" id="sim-count-all">-</div>
+        <!-- Unified Quantitative Telemetry Ribbon -->
+        <div class="telemetry-ribbon-container">
+            <!-- Left Hero Pill -->
+            <div class="telemetry-badge-hero" id="chip-filter-hero" title="View All Simulations">
+                <div class="pulse-indicator">
+                    <span class="pulse-dot"></span>
+                    <span class="pulse-ring"></span>
+                </div>
+                <div class="telemetry-hero-details">
+                    <span class="telemetry-label">Total Runs</span>
+                    <span class="telemetry-value" id="sim-count-all">-</span>
+                </div>
             </div>
-            <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #16a34a;">
-                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Valid Alphas</div>
-                <div style="font-size: 24px; font-weight: 800; color: #16a34a; margin-top: 4px;" id="sim-count-valid">-</div>
+
+            <!-- Center Visual Yield Distribution Meter -->
+            <div class="telemetry-yield-wrapper">
+                <div class="yield-bar-header">
+                    <span class="yield-bar-title"><i data-lucide="bar-chart-2" style="width: 14px; height: 14px;"></i> Alpha Yield Distribution</span>
+                    <span class="yield-bar-percentage" id="sim-yield-rate">0.0% Success Yield</span>
+                </div>
+                <div class="yield-progress-bar">
+                    <div class="yield-segment segment-valid" id="bar-segment-valid" style="width: 0%;" title="Valid Alphas"></div>
+                    <div class="yield-segment segment-running" id="bar-segment-running" style="width: 0%;" title="In Progress"></div>
+                    <div class="yield-segment segment-failed" id="bar-segment-failed" style="width: 0%;" title="Technical Failures"></div>
+                </div>
             </div>
-            <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #eab308;">
-                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">In Progress</div>
-                <div style="font-size: 24px; font-weight: 800; color: #ca8a04; margin-top: 4px;" id="sim-count-running">-</div>
-            </div>
-            <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #ef4444;">
-                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Technical Failures</div>
-                <div style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px;" id="sim-count-failed">-</div>
+
+            <!-- Right Interactive Metric Filter Chips -->
+            <div class="telemetry-chips-group">
+                <button class="telemetry-chip active" id="chip-filter-all">
+                    <i data-lucide="layers" style="width: 13px; height: 13px;"></i>
+                    <span class="chip-label">All Runs</span>
+                </button>
+                <button class="telemetry-chip chip-valid" id="chip-filter-valid">
+                    <span class="chip-dot dot-valid"></span>
+                    <i data-lucide="check-circle-2" style="width: 13px; height: 13px; color: #16a34a;"></i>
+                    <span class="chip-label">Valid Alphas</span>
+                    <span class="chip-count" id="sim-count-valid">-</span>
+                </button>
+                <button class="telemetry-chip chip-running" id="chip-filter-running">
+                    <span class="chip-dot dot-running"></span>
+                    <i data-lucide="loader" style="width: 13px; height: 13px; color: #ca8a04;"></i>
+                    <span class="chip-label">In Progress</span>
+                    <span class="chip-count" id="sim-count-running">-</span>
+                </button>
+                <button class="telemetry-chip chip-failed" id="chip-filter-failed">
+                    <span class="chip-dot dot-failed"></span>
+                    <i data-lucide="alert-octagon" style="width: 13px; height: 13px; color: #ef4444;"></i>
+                    <span class="chip-label">Failures</span>
+                    <span class="chip-count" id="sim-count-failed">-</span>
+                </button>
             </div>
         </div>
 
@@ -283,24 +327,34 @@ export async function renderSimulations(container) {
 
     if (window.lucide) window.lucide.createIcons();
 
-    // Bind Filter Buttons
-    const bindFilterBtn = (id, filterVal) => {
-        document.getElementById(id)?.addEventListener("click", () => {
-            currentFilter = filterVal;
-            ['all', 'valid', 'running', 'failed'].forEach(f => {
-                const btn = document.getElementById(`filter-btn-${f}`);
-                if (btn) {
-                    btn.className = `btn btn-sm ${f.toUpperCase() === filterVal ? 'btn-primary' : 'btn-outline'}`;
+    // Bind Filter Buttons & Telemetry Chips
+    const setFilter = (filterVal) => {
+        currentFilter = filterVal;
+        ['all', 'valid', 'running', 'failed'].forEach(f => {
+            const btn = document.getElementById(`filter-btn-${f}`);
+            const chip = document.getElementById(`chip-filter-${f}`);
+            const isMatch = f.toUpperCase() === filterVal;
+            
+            if (btn) {
+                btn.className = `btn btn-sm ${isMatch ? 'btn-primary' : 'btn-outline'}`;
+            }
+            if (chip) {
+                if (isMatch) {
+                    chip.classList.add('active');
+                } else {
+                    chip.classList.remove('active');
                 }
-            });
-            renderTableBody(cachedSims);
+            }
         });
+        renderTableBody(cachedSims);
     };
 
-    bindFilterBtn('filter-btn-all', 'ALL');
-    bindFilterBtn('filter-btn-valid', 'VALID');
-    bindFilterBtn('filter-btn-running', 'RUNNING');
-    bindFilterBtn('filter-btn-failed', 'FAILED');
+    ['all', 'valid', 'running', 'failed'].forEach(f => {
+        const filterVal = f.toUpperCase();
+        document.getElementById(`filter-btn-${f}`)?.addEventListener("click", () => setFilter(filterVal));
+        document.getElementById(`chip-filter-${f}`)?.addEventListener("click", () => setFilter(filterVal));
+    });
+    document.getElementById("chip-filter-hero")?.addEventListener("click", () => setFilter("ALL"));
 
     // Bind Search Input
     document.getElementById("sim-search-input")?.addEventListener("input", (e) => {
