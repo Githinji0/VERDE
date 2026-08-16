@@ -209,26 +209,30 @@
 
     <!-- Candidate Inspector Modal / Drawer -->
     <div class="modal-overlay" id="candidate-modal">
-        <div class="modal-box" style="max-width: 760px;">
+        <div class="modal-box" style="max-width: 780px;">
             <div class="modal-header">
-                <h3 class="card-title"><i data-lucide="microscope"></i> Candidate Inspector</h3>
-                <button class="btn btn-outline btn-sm" onclick="window.verdeUI.closeCandidateModal()">&times;</button>
+                <h3 class="card-title"><i data-lucide="microscope" style="color: var(--verde-primary);"></i> Candidate Inspector</h3>
+                <button class="btn-modal-close" onclick="window.verdeUI.closeCandidateModal()" title="Close Inspector">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
             </div>
-            <div id="candidate-modal-body">
-                <!-- Injected -->
+            <div class="modal-body" id="candidate-modal-body">
+                <!-- Injected via candidates.js -->
             </div>
         </div>
     </div>
 
     <!-- Diagnostic Debug Modal -->
     <div class="modal-overlay" id="diagnostic-modal">
-        <div class="modal-box" style="max-width: 680px;">
+        <div class="modal-box" style="max-width: 720px;">
             <div class="modal-header">
                 <h3 class="card-title" style="color: var(--status-warning);"><i data-lucide="alert-triangle"></i> Simulation Diagnostic Detail</h3>
-                <button class="btn btn-outline btn-sm" onclick="window.verdeUI.closeDiagnosticModal()">&times;</button>
+                <button class="btn-modal-close" onclick="window.verdeUI.closeDiagnosticModal()" title="Close Diagnostics">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
             </div>
-            <div id="diagnostic-modal-body">
-                <!-- Injected -->
+            <div class="modal-body" id="diagnostic-modal-body">
+                <!-- Injected via logs.js -->
             </div>
         </div>
     </div>

@@ -90,103 +90,199 @@ export async function populateCandidateModal(candidateId) {
     const body = document.getElementById("candidate-modal-body");
     if (!body) return;
 
-    body.innerHTML = `<div style="text-align: center; padding: 20px;"><i data-lucide="loader" class="spin"></i> Loading inspection details...</div>`;
+    body.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-muted);"><i data-lucide="loader" class="spin" style="width: 28px; height: 28px; margin-bottom: 10px; color: var(--verde-primary);"></i><div>Loading candidate inspection details...</div></div>`;
     if (window.lucide) window.lucide.createIcons();
 
     try {
         const c = await api.getCandidateDetail(candidateId);
-        const latestSim = c.simulations.length > 0 ? c.simulations[c.simulations.length - 1] : null;
+        const latestSim = c.simulations && c.simulations.length > 0 ? c.simulations[c.simulations.length - 1] : null;
+
+        const isPareto = c.is_pareto;
+        const tierBadge = renderBadge(c.tier);
+        const preflightBadge = renderBadge(c.preflight ? c.preflight.decision : c.preflight_status || "PASS");
 
         body.innerHTML = `
-            <!-- Expression Box -->
-            <div style="margin-bottom: 16px;">
-                <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted);">Alpha Expression Code:</label>
-                <div class="code-expr" style="display: block; max-width: 100%; font-size: 13px; margin-top: 4px; padding: 10px;">${c.expression}</div>
-            </div>
-
-            <!-- Metadata Grid -->
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-                <div class="card" style="margin: 0; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-muted);">Research Family</div>
-                    <div style="font-weight: 700; font-size: 14px;">${c.family_code}</div>
+            <!-- Top Summary Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-family: monospace; font-size: 13px; font-weight: 700; color: var(--verde-dark); background: var(--verde-pale); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--verde-pale-border);">
+                        ${c.id.substring(0, 13)}
+                    </span>
+                    <span class="badge badge-info"><i data-lucide="tag" style="width: 12px; height: 12px;"></i> ${c.family_code || 'MOMENTUM'}</span>
+                    ${tierBadge}
+                    ${isPareto ? `<span class="badge badge-pareto"><i data-lucide="sparkles" style="width: 12px; height: 12px;"></i> Pareto Optimal</span>` : ''}
                 </div>
-                <div class="card" style="margin: 0; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-muted);">Candidate Tier</div>
-                    <div>${renderBadge(c.tier)}</div>
-                </div>
-                <div class="card" style="margin: 0; padding: 12px;">
-                    <div style="font-size: 11px; color: var(--text-muted);">Complexity Score</div>
-                    <div style="font-weight: 700; font-size: 14px;">${c.complexity_score}</div>
+                <div style="font-size: 12px; color: var(--text-muted);">
+                    Created: ${formatTimestamp(c.created_at)}
                 </div>
             </div>
 
-            <!-- Preflight & Diagnostic Attributes -->
-            <div class="card" style="background-color: var(--bg-main); margin-bottom: 16px;">
-                <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;"><i data-lucide="check-square"></i> Preflight Inspection Metrics</h4>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; font-size: 13px;">
-                    <div><strong>Preflight:</strong> ${renderBadge(c.preflight.decision)}</div>
-                    <div><strong>Temporal Compat:</strong> ${(c.compatibility_score * 100).toFixed(0)}%</div>
-                    <div><strong>Constant Risk:</strong> ${(c.constant_signal_risk * 100).toFixed(0)}%</div>
+            <!-- Alpha Expression Code Container with Copy Button -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <label style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px;">
+                        Alpha FastExpr Formula
+                    </label>
+                    <button class="btn btn-outline btn-sm" id="btn-copy-expr" style="font-size: 11px; padding: 3px 8px;" title="Copy Formula">
+                        <i data-lucide="copy" style="width: 12px; height: 12px;"></i> Copy Code
+                    </button>
+                </div>
+                <div class="code-expr" style="display: block; width: 100%; font-size: 13px; padding: 14px; line-height: 1.6; word-break: break-all; border-radius: var(--radius-md); box-sizing: border-box; background: var(--bg-card-dark-gradient); color: #f1f5f9; border: 1px solid rgba(34, 197, 94, 0.3);">
+                    ${c.expression}
                 </div>
             </div>
 
-            <!-- Performance Metrics -->
-            <div class="card" style="margin-bottom: 16px;">
-                <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;"><i data-lucide="bar-chart-2"></i> WorldQuant BRAIN Simulation Metrics</h4>
-                ${latestSim ? `
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; font-size: 14px;">
-                        <div><div style="font-size: 11px; color: var(--text-muted);">Sharpe</div><strong>${formatMetric(latestSim.sharpe)}</strong></div>
-                        <div><div style="font-size: 11px; color: var(--text-muted);">Fitness</div><strong>${formatMetric(latestSim.fitness)}</strong></div>
-                        <div><div style="font-size: 11px; color: var(--text-muted);">Turnover</div><strong>${formatMetric(latestSim.turnover)}</strong></div>
-                        <div><div style="font-size: 11px; color: var(--text-muted);">Margin</div><strong>${formatBps(latestSim.margin_bps)}</strong></div>
+            <!-- Simulation Performance Metric Cards -->
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 13px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="activity" style="color: var(--verde-primary);"></i> BRAIN Performance & Metrics
+                    </span>
+                    ${latestSim ? renderBadge(latestSim.status) : '<span style="font-size: 12px; color: var(--text-muted);">Not Simulated</span>'}
+                </div>
+                ${latestSim && (latestSim.sharpe !== null || latestSim.fitness !== null) ? `
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+                        <div class="card" style="margin: 0; padding: 14px; text-align: center; border-top: 3px solid #16a34a; background: #fafafa;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Sharpe Ratio</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #16a34a; margin-top: 4px;">${formatMetric(latestSim.sharpe)}</div>
+                            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Target ≥ 1.25</div>
+                        </div>
+                        <div class="card" style="margin: 0; padding: 14px; text-align: center; border-top: 3px solid #16a34a; background: #fafafa;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Fitness</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #16a34a; margin-top: 4px;">${formatMetric(latestSim.fitness)}</div>
+                            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Target ≥ 1.00</div>
+                        </div>
+                        <div class="card" style="margin: 0; padding: 14px; text-align: center; border-top: 3px solid #3b82f6; background: #fafafa;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Turnover</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #3b82f6; margin-top: 4px;">${formatMetric(latestSim.turnover)}</div>
+                            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Max ≤ 0.70</div>
+                        </div>
+                        <div class="card" style="margin: 0; padding: 14px; text-align: center; border-top: 3px solid #eab308; background: #fafafa;">
+                            <div style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Margin</div>
+                            <div style="font-size: 20px; font-weight: 800; color: #ca8a04; margin-top: 4px;">${formatBps(latestSim.margin_bps)}</div>
+                            <div style="font-size: 10.5px; color: var(--text-muted); margin-top: 2px;">Min ≥ 4.0 bps</div>
+                        </div>
                     </div>
                 ` : `
-                    <div style="color: var(--text-muted); font-size: 13px;">No simulation results recorded yet.</div>
+                    <div class="card" style="margin: 0; padding: 18px; text-align: center; background: #f8fafc;">
+                        <i data-lucide="play-circle" style="width: 24px; height: 24px; color: var(--text-muted); margin-bottom: 6px;"></i>
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-main);">No simulation metrics recorded yet.</div>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">Submit candidate to BRAIN to calculate Sharpe, Fitness, and Turnover metrics.</div>
+                    </div>
                 `}
             </div>
 
-            <!-- Actions & Targeted Mutation -->
-            <div style="display: flex; justify-content: space-between; align-items: center;">
+            <!-- Preflight & AST Architecture Details -->
+            <div class="card" style="margin-bottom: 20px; padding: 18px; background: #ffffff;">
+                <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="shield-check" style="color: var(--verde-primary);"></i> Preflight Multi-Stage Validation
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; font-size: 13px;">
+                    <div style="padding: 10px; background: #f8fafc; border-radius: var(--radius-sm);">
+                        <div style="font-size: 11px; color: var(--text-muted);">Preflight Decision</div>
+                        <div style="margin-top: 4px;">${preflightBadge}</div>
+                    </div>
+                    <div style="padding: 10px; background: #f8fafc; border-radius: var(--radius-sm);">
+                        <div style="font-size: 11px; color: var(--text-muted);">Temporal Compatibility</div>
+                        <div style="font-weight: 700; font-size: 14px; color: #16a34a; margin-top: 4px;">
+                            ${((c.compatibility_score || 1.0) * 100).toFixed(0)}%
+                        </div>
+                    </div>
+                    <div style="padding: 10px; background: #f8fafc; border-radius: var(--radius-sm);">
+                        <div style="font-size: 11px; color: var(--text-muted);">Constant Signal Risk</div>
+                        <div style="font-weight: 700; font-size: 14px; color: ${(c.constant_signal_risk || 0) > 0.3 ? '#ef4444' : '#16a34a'}; margin-top: 4px;">
+                            ${((c.constant_signal_risk || 0.0) * 100).toFixed(0)}%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fields and Operators Chips -->
+                <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px;">
+                    <div>
+                        <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Fields Used:</strong>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
+                            ${(c.fields_used || []).map(f => `<span class="badge badge-info">${f}</span>`).join('') || '<span style="color: var(--text-muted);">None</span>'}
+                        </div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">Operators Used:</strong>
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px;">
+                            ${(c.operators_used || []).map(o => `<span class="badge badge-warning">${o}</span>`).join('') || '<span style="color: var(--text-muted);">None</span>'}
+                        </div>
+                    </div>
+                    <div>
+                        <strong style="color: var(--text-muted); font-size: 11px; text-transform: uppercase;">AST Complexity:</strong>
+                        <div style="margin-top: 4px; font-weight: 700;">Score: ${c.complexity_score || 1.0} (Depth: ${c.nesting_depth || 1})</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Bar -->
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
                 <button class="btn btn-outline" id="btn-modal-mutate">
-                    <i data-lucide="git-branch"></i> Generate Near-Miss Mutations
+                    <i data-lucide="git-branch"></i> Synthesize Near-Miss Mutations
                 </button>
                 <div style="display: flex; gap: 8px;">
-                    <button class="btn btn-primary" onclick="window.verdeUI.simulateCandidate('${c.id}')">
+                    <button class="btn btn-outline" onclick="window.verdeUI.closeCandidateModal()">
+                        Close
+                    </button>
+                    <button class="btn btn-primary" onclick="window.verdeUI.closeCandidateModal(); window.verdeUI.simulateCandidate('${c.id}')">
                         <i data-lucide="play"></i> Simulate on BRAIN
                     </button>
                 </div>
             </div>
 
+            <!-- Mutation Container -->
             <div id="mutation-results" style="margin-top: 16px;"></div>
         `;
 
         if (window.lucide) window.lucide.createIcons();
 
+        // Copy expression button
+        document.getElementById("btn-copy-expr")?.addEventListener("click", () => {
+            navigator.clipboard.writeText(c.expression).then(() => {
+                showToast("Alpha expression copied to clipboard!", "success");
+            }).catch(() => {
+                showToast("Failed to copy to clipboard", "error");
+            });
+        });
+
+        // Mutate handler
         document.getElementById("btn-modal-mutate")?.addEventListener("click", async () => {
             const mutContainer = document.getElementById("mutation-results");
-            mutContainer.innerHTML = `<div style="padding: 10px;"><i data-lucide="loader" class="spin"></i> Synthesizing targeted mutations...</div>`;
+            mutContainer.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--text-muted);"><i data-lucide="loader" class="spin"></i> Generating targeted mutations...</div>`;
             if (window.lucide) window.lucide.createIcons();
 
             try {
                 const res = await api.mutateCandidate(c.id);
                 mutContainer.innerHTML = `
-                    <div class="card" style="background-color: var(--verde-pale); border-color: var(--verde-pale-border);">
-                        <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 8px;">Generated Mutations:</h4>
-                        ${res.mutations.map(m => `
-                            <div style="margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.05);">
-                                <span class="badge badge-info">${m.mutation_type}</span>
-                                <div class="code-expr" style="display: block; margin: 4px 0;">${m.expression}</div>
-                                <div style="font-size: 12px; color: var(--text-muted);">${m.generation_reason}</div>
-                            </div>
-                        `).join('')}
+                    <div class="card" style="background-color: var(--verde-pale); border-color: var(--verde-pale-border); margin-top: 12px;">
+                        <h4 style="font-size: 13px; font-weight: 700; color: var(--verde-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
+                            <i data-lucide="git-commit"></i> Generated Hypothesis Mutations (${res.mutations.length})
+                        </h4>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            ${res.mutations.map(m => `
+                                <div style="background: #ffffff; padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--verde-pale-border);">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                        <span class="badge badge-info">${m.mutation_type}</span>
+                                        <button class="btn btn-primary btn-sm" onclick="window.verdeUI.closeCandidateModal(); window.verdeUI.simulateCandidate('${m.candidate_id || c.id}')" style="font-size: 11px; padding: 3px 8px;">
+                                            <i data-lucide="play" style="width: 11px; height: 11px;"></i> Simulate Variant
+                                        </button>
+                                    </div>
+                                    <div class="code-expr" style="display: block; margin: 6px 0; font-size: 12px;">${m.expression}</div>
+                                    <div style="font-size: 11.5px; color: var(--text-muted);">${m.generation_reason}</div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 `;
+                if (window.lucide) window.lucide.createIcons();
             } catch (e) {
-                mutContainer.innerHTML = `<div style="color: var(--status-danger);">Mutation failed: ${e.message}</div>`;
+                mutContainer.innerHTML = `<div class="card" style="color: var(--status-danger);">Mutation generation notice: ${e.message}</div>`;
             }
         });
 
     } catch (err) {
-        body.innerHTML = `<div style="color: var(--status-danger);">Error: ${err.message}</div>`;
+        body.innerHTML = `<div class="card" style="color: var(--status-danger);">Error loading candidate details: ${err.message}</div>`;
     }
 }

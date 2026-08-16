@@ -161,6 +161,24 @@ function initApp() {
         navigateTo("brain-connection");
     });
 
+    // Close modals when clicking on backdrop overlay
+    document.querySelectorAll(".modal-overlay").forEach(overlay => {
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove("active");
+            }
+        });
+    });
+
+    // Close modals on Escape key
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            document.querySelectorAll(".modal-overlay.active").forEach(modal => {
+                modal.classList.remove("active");
+            });
+        }
+    });
+
     // Check initial hash or load dashboard
     const initialPage = window.location.hash.replace('#', '') || 'dashboard';
     navigateTo(initialPage);
