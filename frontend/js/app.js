@@ -118,9 +118,30 @@ window.verdeUI = {
         try {
             const res = await api.pollSimulation(id);
             showToast(`Simulation ${id.substring(0,8)} status: ${res.status}`, "info");
-            navigateTo('simulations');
+            const curPage = window.location.hash.replace('#', '') || 'dashboard';
+            if (curPage === 'simulations') {
+                const { refreshSimulationsData } = await import('./simulations.js');
+                await refreshSimulationsData(true);
+            } else {
+                navigateTo('simulations');
+            }
         } catch (err) {
             showToast(`Poll failed: ${err.message}`, "error");
+        }
+    },
+    pollSimulationInline: async (id) => {
+        const btn = document.getElementById(`btn-poll-${id}`);
+        const icon = btn ? btn.querySelector("i, svg") : null;
+        if (icon) icon.classList.add("spin");
+        try {
+            const res = await api.pollSimulation(id);
+            showToast(`Simulation ${id.substring(0,8)} status: ${res.status}`, "info");
+            const { refreshSimulationsData } = await import('./simulations.js');
+            await refreshSimulationsData(true);
+        } catch (err) {
+            showToast(`Poll failed: ${err.message}`, "error");
+        } finally {
+            if (icon) icon.classList.remove("spin");
         }
     },
     handleQuickSearch: (query) => {
