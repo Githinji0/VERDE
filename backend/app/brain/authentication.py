@@ -12,13 +12,30 @@ class BrainAuthManager:
     def __init__(self, base_url: Optional[str] = None):
         self.base_url = (base_url or settings.BRAIN_API_BASE_URL).rstrip("/")
 
-    async def authenticate(self, username: str, password: str) -> Dict[str, Any]:
+    async def authenticate(self, username: str, password: str, environment: str = "PROD") -> Dict[str, Any]:
         """
         Attempts authentication with WorldQuant BRAIN API.
         Returns a structured diagnostic dict with status_code, session_cookies, and safe diagnostic status.
         """
-        endpoint = f"{self.base_url}/authentication"
         start_time = time.time()
+        
+        # Handle local Simulation Sandbox environment
+        if environment == "SIMULATION":
+            verde_logger.log_event(
+                event="BRAIN_AUTH_SANDBOX",
+                severity="INFO",
+                component="BRAIN_AUTH",
+                message=f"Simulation Sandbox session activated for researcher: {username[:3]}***"
+            )
+            return {
+                "status": "BRAIN_AUTH_SUCCESS",
+                "status_code": 200,
+                "cookies": {"wqa_session": "sandbox_active", "user": username},
+                "raw_data": {"user": username, "environment": "SIMULATION", "sandbox": True},
+                "latency_ms": 32.5
+            }
+
+        endpoint = f"{self.base_url}/authentication"
         
         verde_logger.log_event(
             event="BRAIN_AUTH_START",
@@ -29,11 +46,10 @@ class BrainAuthManager:
 
         try:
             async with httpx.AsyncClient(timeout=settings.BRAIN_TIMEOUT, follow_redirects=True) as client:
-                # WorldQuant BRAIN uses HTTP Basic Auth or POST credentials on /authentication endpoint
+                # WorldQuant BRAIN uses HTTP Basic Auth on /authentication endpoint
                 response = await client.post(
                     endpoint,
                     auth=(username, password),
-                    json={"username": username, "password": password},
                     headers={"Accept": "application/json"}
                 )
                 latency = round((time.time() - start_time) * 1000, 2)
@@ -64,16 +80,22 @@ class BrainAuthManager:
                         "latency_ms": latency
                     }
                 elif response.status_code in (401, 403):
+                    try:
+                        err_body = response.json()
+                        err_detail = err_body.get("detail") or err_body.get("message") or "Invalid email or password."
+                    except Exception:
+                        err_detail = "Invalid email or password."
+
                     verde_logger.log_event(
                         event="BRAIN_AUTH_FAILURE",
                         severity="WARNING",
                         component="BRAIN_AUTH",
-                        message=f"Invalid BRAIN credentials (Status {response.status_code})"
+                        message=f"Invalid BRAIN credentials (Status {response.status_code}): {err_detail}"
                     )
                     return {
                         "status": "BRAIN_AUTH_INVALID_CREDENTIALS" if response.status_code == 401 else "BRAIN_AUTH_FORBIDDEN",
                         "status_code": response.status_code,
-                        "error_message": "Invalid email or password.",
+                        "error_message": f"WorldQuant BRAIN rejected credentials: {err_detail}",
                         "latency_ms": latency
                     }
                 elif response.status_code == 429:
@@ -86,14 +108,14 @@ class BrainAuthManager:
                     return {
                         "status": "BRAIN_AUTH_RATE_LIMITED",
                         "status_code": 429,
-                        "error_message": "Rate limit exceeded. Please wait before retrying.",
+                        "error_message": "Rate limit exceeded on WorldQuant BRAIN. Please wait before retrying.",
                         "latency_ms": latency
                     }
                 else:
                     return {
                         "status": "BRAIN_AUTH_NETWORK_ERROR",
                         "status_code": response.status_code,
-                        "error_message": f"Unexpected BRAIN API status code: {response.status_code}",
+                        "error_message": f"WorldQuant BRAIN API returned status {response.status_code}: {response.text[:120]}",
                         "latency_ms": latency
                     }
 

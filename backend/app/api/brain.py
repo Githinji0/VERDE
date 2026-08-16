@@ -25,6 +25,7 @@ class BrainHealthResponse(BaseModel):
     brain_api_url: str
     environment: str
     connected: bool
+    email: Optional[str] = None
     last_tested: Optional[str] = None
 
 
@@ -43,6 +44,7 @@ async def get_brain_health(db: AsyncSession = Depends(get_db)):
         brain_api_url=settings.BRAIN_API_BASE_URL,
         environment=conn.environment if conn else "PROD",
         connected=connected,
+        email=conn.email if conn else None,
         last_tested=last_tested
     )
 
@@ -53,7 +55,7 @@ async def test_brain_authentication(req: BrainAuthRequest):
     Tests credentials against WorldQuant BRAIN API without saving session.
     Returns safe diagnostic status.
     """
-    result = await brain_auth.authenticate(req.email, req.password)
+    result = await brain_auth.authenticate(req.email, req.password, req.environment)
     return {
         "status": result["status"],
         "status_code": result["status_code"],
@@ -67,7 +69,7 @@ async def connect_brain_account(req: BrainAuthRequest, db: AsyncSession = Depend
     """
     Authenticates and securely stores encrypted credentials and session for WorldQuant BRAIN.
     """
-    result = await brain_auth.authenticate(req.email, req.password)
+    result = await brain_auth.authenticate(req.email, req.password, req.environment)
     
     if result["status"] != "BRAIN_AUTH_SUCCESS":
         return {
@@ -76,11 +78,18 @@ async def connect_brain_account(req: BrainAuthRequest, db: AsyncSession = Depend
             "message": result.get("error_message", "Authentication failed.")
         }
 
+    # Deactivate existing active connections first
+    active_stmt = select(BrainConnection).where(BrainConnection.is_active == True)
+    active_res = await db.execute(active_stmt)
+    for old_conn in active_res.scalars().all():
+        old_conn.is_active = False
+        old_conn.status = "DISCONNECTED"
+
     # Encrypt password & session cookies
     encrypted_pw = vault.encrypt(req.password)
     encrypted_cookie = vault.encrypt(json.dumps(result.get("cookies", {})))
 
-    # Check for existing connection
+    # Check for existing connection by email
     stmt = select(BrainConnection).where(BrainConnection.email == req.email)
     res = await db.execute(stmt)
     conn = res.scalar_one_or_none()
@@ -91,6 +100,7 @@ async def connect_brain_account(req: BrainAuthRequest, db: AsyncSession = Depend
             encrypted_password=encrypted_pw,
             environment=req.environment,
             status="CONNECTED",
+            is_active=True,
             last_tested_at=datetime.now(timezone.utc),
             last_status_code="200"
         )
@@ -100,6 +110,7 @@ async def connect_brain_account(req: BrainAuthRequest, db: AsyncSession = Depend
         conn.encrypted_password = encrypted_pw
         conn.environment = req.environment
         conn.status = "CONNECTED"
+        conn.is_active = True
         conn.last_tested_at = datetime.now(timezone.utc)
         conn.last_status_code = "200"
 

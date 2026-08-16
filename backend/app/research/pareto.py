@@ -92,5 +92,48 @@ class ParetoFrontierEngine:
 
         return results
 
+    @classmethod
+    async def update_pareto_front_db(cls, session):
+        """Asynchronously updates is_pareto and pareto_rank for all candidates with valid metrics."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import selectinload
+        from backend.app.database.models import AlphaCandidate, Simulation, SimulationMetric
+
+        stmt = select(AlphaCandidate).join(Simulation).join(SimulationMetric).where(
+            SimulationMetric.has_valid_metrics == True
+        ).options(
+            selectinload(AlphaCandidate.simulations).selectinload(Simulation.metrics)
+        )
+        res = await session.execute(stmt)
+        candidates = res.scalars().unique().all()
+        if not candidates:
+            return
+
+        cand_dicts = []
+        cand_map = {}
+        for c in candidates:
+            cand_map[c.id] = c
+            latest_metric = None
+            if c.simulations:
+                for s in reversed(c.simulations):
+                    if s.metrics and s.metrics.has_valid_metrics:
+                        latest_metric = s.metrics
+                        break
+            if latest_metric:
+                cand_dicts.append({
+                    "id": c.id,
+                    "sharpe": latest_metric.sharpe,
+                    "fitness": latest_metric.fitness,
+                    "turnover": latest_metric.turnover,
+                    "margin_bps": latest_metric.margin_bps
+                })
+
+        pareto_results = cls.compute_pareto_front(cand_dicts)
+        for r in pareto_results:
+            c = cand_map.get(r["id"])
+            if c:
+                c.is_pareto = r["is_pareto_optimal"]
+                c.pareto_rank = r["pareto_rank"]
+
 
 pareto_engine = ParetoFrontierEngine()

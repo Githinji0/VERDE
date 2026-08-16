@@ -21,7 +21,7 @@ export async function renderDashboard(container) {
         if (brainDot && brainText) {
             if (status.brain_connection === "CONNECTED") {
                 brainDot.className = "status-dot online";
-                brainText.textContent = "BRAIN: Connected";
+                brainText.textContent = status.brain_environment === "SIMULATION" ? "BRAIN: Sandbox" : "BRAIN: Connected";
             } else {
                 brainDot.className = "status-dot offline";
                 brainText.textContent = "BRAIN: Disconnected";

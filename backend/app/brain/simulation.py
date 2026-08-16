@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 from sqlalchemy import select
@@ -7,11 +8,15 @@ from backend.app.brain.client import brain_client
 from backend.app.brain.response_parser import response_parser
 from backend.app.core.logging import verde_logger
 from backend.app.core.security import vault
-from backend.app.database.models import AlphaCandidate, BrainConnection, BrainSession, Simulation, SimulationMetric
+from backend.app.database.models import AlphaCandidate, BrainConnection, BrainSession, ResearchScore, Simulation, SimulationMetric
+from backend.app.database.session import AsyncSessionFactory
+from backend.app.research.memory import research_memory
+from backend.app.research.pareto import pareto_engine
+from backend.app.research.scoring import alpha_scorer
 
 
 class SimulationOrchestrator:
-    """Manages the full lifecycle of simulations from submission through state-machine transitions and metric extraction."""
+    """Manages the full lifecycle of simulations from submission through state-machine transitions, background polling, and metric extraction."""
 
     async def execute_simulation(
         self,
@@ -34,6 +39,8 @@ class SimulationOrchestrator:
         brain_conn = conn_res.scalars().first()
 
         cookies = None
+        environment = brain_conn.environment if brain_conn else "SIMULATION"
+
         if brain_conn:
             # Check for active session cookie
             sess_stmt = select(BrainSession).where(BrainSession.connection_id == brain_conn.id, BrainSession.is_valid == True)
@@ -41,7 +48,6 @@ class SimulationOrchestrator:
             brain_sess = sess_res.scalars().first()
             if brain_sess and brain_sess.encrypted_session_cookie:
                 try:
-                    import json
                     cookie_str = vault.decrypt(brain_sess.encrypted_session_cookie)
                     cookies = json.loads(cookie_str)
                 except Exception:
@@ -49,6 +55,7 @@ class SimulationOrchestrator:
 
         # 3. Create Simulation Record in DB
         sim_settings = settings_dict or {
+            "instrumentType": "EQUITY",
             "universe": "TOP3000",
             "region": "USA",
             "delay": 1,
@@ -81,10 +88,19 @@ class SimulationOrchestrator:
         submission_result = await brain_client.submit_simulation(
             expression=candidate.expression,
             settings_dict=sim_settings,
-            cookies=cookies
+            cookies=cookies,
+            environment=environment,
+            family_code=candidate.family_code or "MOMENTUM"
         )
 
-        if submission_result["status"] in ("SUBMITTED", "COMPLETE"):
+        if submission_result["status"] == "COMPLETE":
+            simulation.brain_sim_id = submission_result.get("brain_sim_id")
+            await self.update_simulation_from_response(
+                simulation,
+                submission_result.get("data") or submission_result.get("raw_response") or {},
+                session
+            )
+        elif submission_result["status"] == "SUBMITTED":
             simulation.brain_sim_id = submission_result.get("brain_sim_id")
             simulation.status = "RUNNING"
             await session.commit()
@@ -95,6 +111,8 @@ class SimulationOrchestrator:
                 simulation_id=simulation.id,
                 message=f"Simulation running with BRAIN ID: {simulation.brain_sim_id}"
             )
+            # Launch background polling task to automatically resolve simulation to completion
+            asyncio.create_task(self._poll_simulation_background(simulation.id, simulation.brain_sim_id, cookies))
         else:
             simulation.status = submission_result.get("status", "SUBMISSION_ERROR")
             simulation.classification = "TECHNICAL_FAILURE"
@@ -104,13 +122,38 @@ class SimulationOrchestrator:
 
         return simulation
 
+    async def _poll_simulation_background(self, simulation_id: str, brain_sim_id: str, cookies: Optional[Dict[str, str]] = None):
+        """Asynchronously polls BRAIN simulation until complete and triggers result processing."""
+        for attempt in range(1, 40):
+            await asyncio.sleep(2.0)
+            try:
+                poll_res = await brain_client.poll_simulation_status(brain_sim_id, cookies=cookies)
+                if poll_res.get("status_code") == 200:
+                    data = poll_res.get("data", {})
+                    status = data.get("status", "").upper()
+                    if status in ("COMPLETE", "ERROR", "CANCELLED") or "records" in data or "stats" in data:
+                        async with AsyncSessionFactory() as session:
+                            sim_stmt = select(Simulation).where(Simulation.id == simulation_id)
+                            res = await session.execute(sim_stmt)
+                            sim = res.scalar_one_or_none()
+                            if sim:
+                                await self.update_simulation_from_response(sim, data, session)
+                        break
+            except Exception as e:
+                verde_logger.log_event(
+                    event="POLL_BACKGROUND_ERROR",
+                    severity="WARNING",
+                    component="SIMULATION_ENGINE",
+                    message=f"Error in background simulation polling ({simulation_id}): {str(e)}"
+                )
+
     async def update_simulation_from_response(
         self,
         simulation: Simulation,
         raw_response_data: Dict[str, Any],
         session: AsyncSession
     ) -> Simulation:
-        """Parses BRAIN response and updates simulation records and metrics."""
+        """Parses BRAIN response and updates simulation records, candidate tiers, memory, and Pareto rankings."""
         parsed = response_parser.parse_simulation_response(raw_response_data)
         
         simulation.raw_response = raw_response_data
@@ -133,19 +176,102 @@ class SimulationOrchestrator:
             simulation.status = "COMPLETE"
 
         # Create or update metrics record
-        metric = SimulationMetric(
-            simulation_id=simulation.id,
-            sharpe=parsed["sharpe"],
-            fitness=parsed["fitness"],
-            turnover=parsed["turnover"],
-            margin_bps=parsed["margin_bps"],
-            returns_annualized=parsed["returns_annualized"],
-            drawdown_max=parsed["drawdown_max"],
-            long_count=parsed["long_count"],
-            short_count=parsed["short_count"],
-            has_valid_metrics=parsed["has_valid_metrics"]
-        )
-        session.add(metric)
+        metric_stmt = select(SimulationMetric).where(SimulationMetric.simulation_id == simulation.id)
+        m_res = await session.execute(metric_stmt)
+        metric = m_res.scalar_one_or_none()
+
+        if not metric:
+            metric = SimulationMetric(
+                simulation_id=simulation.id,
+                sharpe=parsed["sharpe"],
+                fitness=parsed["fitness"],
+                turnover=parsed["turnover"],
+                margin_bps=parsed["margin_bps"],
+                returns_annualized=parsed["returns_annualized"],
+                drawdown_max=parsed["drawdown_max"],
+                long_count=parsed["long_count"],
+                short_count=parsed["short_count"],
+                has_valid_metrics=parsed["has_valid_metrics"]
+            )
+            session.add(metric)
+        else:
+            metric.sharpe = parsed["sharpe"]
+            metric.fitness = parsed["fitness"]
+            metric.turnover = parsed["turnover"]
+            metric.margin_bps = parsed["margin_bps"]
+            metric.returns_annualized = parsed["returns_annualized"]
+            metric.drawdown_max = parsed["drawdown_max"]
+            metric.long_count = parsed["long_count"]
+            metric.short_count = parsed["short_count"]
+            metric.has_valid_metrics = parsed["has_valid_metrics"]
+
+        await session.flush()
+
+        # Update candidate state, tier, and research score
+        cand_stmt = select(AlphaCandidate).where(AlphaCandidate.id == simulation.candidate_id)
+        c_res = await session.execute(cand_stmt)
+        candidate = c_res.scalar_one_or_none()
+
+        if candidate:
+            # Calculate Research Score
+            score_data = alpha_scorer.calculate_research_score(
+                sharpe=parsed["sharpe"],
+                fitness=parsed["fitness"],
+                turnover=parsed["turnover"],
+                margin_bps=parsed["margin_bps"],
+                complexity=candidate.complexity_score or 1.0
+            )
+
+            if score_data:
+                sc_stmt = select(ResearchScore).where(ResearchScore.candidate_id == candidate.id)
+                sc_res = await session.execute(sc_stmt)
+                r_score = sc_res.scalar_one_or_none()
+
+                if not r_score:
+                    r_score = ResearchScore(candidate_id=candidate.id)
+                    session.add(r_score)
+
+                r_score.total_score = score_data["total_score"]
+                r_score.sharpe_component = score_data["sharpe_component"]
+                r_score.fitness_component = score_data["fitness_component"]
+                r_score.turnover_component = score_data["turnover_component"]
+                r_score.stability_component = score_data["stability_component"]
+                r_score.robustness_component = score_data["robustness_component"]
+                r_score.diversity_component = score_data["diversity_component"]
+                r_score.simplicity_component = score_data["simplicity_component"]
+                r_score.complexity_penalty = score_data["complexity_penalty"]
+                r_score.is_target_passing = score_data["is_target_passing"]
+                r_score.is_candidate_ready = score_data["is_candidate_ready"]
+
+                if score_data["is_target_passing"]:
+                    candidate.tier = "TIER_4_TARGET_PASSING"
+                elif score_data["is_candidate_ready"]:
+                    candidate.tier = "TIER_3_NEAR_MISS"
+                else:
+                    candidate.tier = "TIER_2_PREFLIGHT_PASSED"
+
+            # Update empirical research memory
+            try:
+                await research_memory.update_memory_from_simulation(session, candidate, simulation, metric)
+            except Exception as mem_err:
+                verde_logger.log_event(
+                    event="MEMORY_UPDATE_WARN",
+                    severity="WARNING",
+                    component="RESEARCH_MEMORY",
+                    message=f"Memory update notice: {str(mem_err)}"
+                )
+
+        # Update Pareto rankings across all valid candidates
+        try:
+            await pareto_engine.update_pareto_front_db(session)
+        except Exception as pareto_err:
+            verde_logger.log_event(
+                event="PARETO_UPDATE_WARN",
+                severity="WARNING",
+                component="PARETO_ENGINE",
+                message=f"Pareto frontier update notice: {str(pareto_err)}"
+            )
+
         await session.commit()
         await session.refresh(simulation)
 

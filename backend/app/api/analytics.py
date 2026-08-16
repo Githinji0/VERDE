@@ -121,6 +121,7 @@ async def get_analytics_overview(db: AsyncSession = Depends(get_db)):
         },
         "system_status": {
             "brain_connection": conn.status if conn else "DISCONNECTED",
+            "brain_environment": conn.environment if conn else "PROD",
             "worker_status": "IDLE",
             "queue_size": job_queue.get_queue_size(),
             "ai_status": "ENABLED" if settings.AI_ENABLED else "DISABLED",

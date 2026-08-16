@@ -11,7 +11,7 @@ import { renderAILab } from './ai_lab.js';
 import { renderBrainConnection } from './brain_connection.js';
 import { renderLogs, populateDiagnosticModal } from './logs.js';
 import { renderSettings } from './settings.js';
-import { showToast } from './utils.js';
+import { showToast, loadSavedUserUI, updateUserUI, syncBrainStatus } from './utils.js';
 
 // Route Definitions
 const routes = {
@@ -164,6 +164,11 @@ function initApp() {
     // Check initial hash or load dashboard
     const initialPage = window.location.hash.replace('#', '') || 'dashboard';
     navigateTo(initialPage);
+
+    // Initialize user profile UI from cache and API
+    loadSavedUserUI();
+    syncBrainStatus();
+    setInterval(syncBrainStatus, 6000);
 }
 
 // Immediate execution check

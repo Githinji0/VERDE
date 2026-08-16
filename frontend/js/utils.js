@@ -62,3 +62,73 @@ export function renderBadge(status, text) {
 
     return `<span class="badge ${badgeClass}">${text || status}</span>`;
 }
+
+export function updateUserUI(userInfo) {
+    if (!userInfo) return;
+    const email = typeof userInfo === 'string' ? userInfo : (userInfo.email || userInfo.username || 'Lead Quant');
+    const namePart = email.includes('@') ? email.split('@')[0] : email;
+    
+    // Clean numbers and format
+    const cleanName = namePart.replace(/[0-9]/g, '').trim() || namePart;
+    const formattedName = cleanName.replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    
+    // Initials (up to 2 chars)
+    const words = formattedName.split(/\s+/).filter(Boolean);
+    const initials = words.length >= 2 
+        ? (words[0][0] + words[1][0]).toUpperCase()
+        : namePart.slice(0, 2).toUpperCase();
+
+    // Deterministic tag
+    const hashNum = Math.abs(email.split('').reduce((a, b) => ((a << 5) - a) + b.charCodeAt(0), 0) % 9000 + 1000);
+    const tag = `#${namePart.toLowerCase().slice(0, 4)}-${hashNum}`;
+
+    const avatarEl = document.getElementById("sidebar-user-avatar");
+    const nameEl = document.getElementById("sidebar-user-name");
+    const tagEl = document.getElementById("sidebar-user-tag");
+    const workspaceEl = document.getElementById("sidebar-workspace-title");
+    const headerUserEl = document.getElementById("user-display");
+
+    if (avatarEl) avatarEl.textContent = initials;
+    if (nameEl) nameEl.textContent = formattedName;
+    if (tagEl) tagEl.textContent = tag;
+    if (workspaceEl) workspaceEl.textContent = `${formattedName.split(' ')[0]}'s Alpha Lab`;
+    if (headerUserEl) headerUserEl.textContent = formattedName;
+
+    // Persist in localStorage
+    try {
+        localStorage.setItem("verde_active_user", JSON.stringify({ email, formattedName, initials, tag }));
+    } catch (e) {}
+}
+
+export function loadSavedUserUI() {
+    try {
+        const saved = localStorage.getItem("verde_active_user");
+        if (saved) {
+            updateUserUI(JSON.parse(saved));
+        }
+    } catch (e) {}
+}
+
+export async function syncBrainStatus() {
+    try {
+        const { api } = await import('./api.js');
+        const health = await api.getBrainHealth();
+        const brainDot = document.getElementById("brain-dot");
+        const brainText = document.getElementById("brain-status-text");
+        if (brainDot && brainText) {
+            if (health && (health.connected || health.status === "ONLINE" || health.status === "CONNECTED")) {
+                brainDot.className = "status-dot online";
+                brainText.textContent = health.environment === "SIMULATION" ? "BRAIN: Sandbox" : "BRAIN: Connected";
+            } else {
+                brainDot.className = "status-dot offline";
+                brainText.textContent = "BRAIN: Disconnected";
+            }
+        }
+        if (health && health.email) {
+            updateUserUI(health.email);
+        }
+        return health;
+    } catch (e) {
+        console.warn("Failed to sync brain status:", e);
+    }
+}

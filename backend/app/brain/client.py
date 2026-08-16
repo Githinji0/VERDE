@@ -3,6 +3,7 @@ import time
 from typing import Any, Dict, Optional, Tuple
 import httpx
 from backend.app.brain.payloads import build_simulation_payload
+from backend.app.brain.simulator import simulation_sandbox
 from backend.app.config import settings
 from backend.app.core.exceptions import BrainPayloadException, BrainSimulationException
 from backend.app.core.logging import verde_logger
@@ -22,17 +23,41 @@ class BrainClient:
         expression: str,
         settings_dict: Optional[Dict[str, Any]] = None,
         cookies: Optional[Dict[str, str]] = None,
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[Dict[str, str]] = None,
+        environment: str = "PROD",
+        family_code: str = "MOMENTUM"
     ) -> Dict[str, Any]:
         """
         Submits an alpha candidate simulation to WorldQuant BRAIN API.
         Validates payload using strict schema before sending.
         """
+        # If in Simulation Sandbox mode, execute directly through realistic quant simulation engine
+        if environment == "SIMULATION":
+            import hashlib
+            sim_data = simulation_sandbox.simulate(expression, settings_dict, family_code=family_code)
+            sim_id = f"sbx_{hashlib.sha256(expression.encode()).hexdigest()[:10]}"
+            verde_logger.log_event(
+                event="SIMULATION_SANDBOX_COMPLETE",
+                severity="INFO",
+                component="BRAIN_CLIENT",
+                message=f"Simulation evaluated in Sandbox: {sim_id} (Sharpe: {sim_data['stats']['sharpe']})",
+                metadata={"brain_sim_id": sim_id, "stats": sim_data["stats"]}
+            )
+            return {
+                "status": "COMPLETE",
+                "brain_sim_id": sim_id,
+                "data": sim_data,
+                "raw_response": sim_data,
+                "status_code": 200
+            }
+
         # Build and validate payload
         payload = build_simulation_payload(expression, settings_dict)
         endpoint = f"{self.base_url}/simulations"
 
         req_headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        if cookies and "t" in cookies:
+            req_headers["Authorization"] = f"Bearer {cookies['t']}"
         if headers:
             req_headers.update(headers)
 
@@ -203,6 +228,8 @@ class BrainClient:
         """
         endpoint = f"{self.base_url}/simulations/{brain_sim_id}"
         req_headers = {"Accept": "application/json"}
+        if cookies and "t" in cookies:
+            req_headers["Authorization"] = f"Bearer {cookies['t']}"
         if headers:
             req_headers.update(headers)
 

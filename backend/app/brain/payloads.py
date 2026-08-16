@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, field_validator
 from backend.app.core.exceptions import BrainPayloadException
 
 # Valid WorldQuant BRAIN Simulation Constants
+VALID_INSTRUMENT_TYPES = {"EQUITY", "CRYPTO"}
 VALID_UNIVERSES = {"TOP3000", "TOP2000", "TOP1000", "TOP500", "SP500", "RUSSELL3000", "GLOBAL", "ILLIQUID"}
 VALID_REGIONS = {"USA", "EUR", "ASI", "GLB"}
 VALID_NEUTRALIZATIONS = {"SUBINDUSTRY", "INDUSTRY", "SECTOR", "MARKET", "NONE"}
@@ -12,6 +13,7 @@ VALID_LANGUAGES = {"FASTEXPR", "EXPRESSION"}
 
 class SimulationSettingsSchema(BaseModel):
     """Strict schema for WorldQuant BRAIN simulation settings."""
+    instrumentType: str = Field(default="EQUITY")
     universe: str = Field(default="TOP3000")
     region: str = Field(default="USA")
     delay: int = Field(default=1, ge=0, le=5)
@@ -23,6 +25,14 @@ class SimulationSettingsSchema(BaseModel):
     nanHandling: str = Field(default="OFF")
     language: str = Field(default="FASTEXPR")
     visualization: bool = Field(default=False)
+
+    @field_validator("instrumentType")
+    @classmethod
+    def validate_instrument_type(cls, v: str) -> str:
+        v_upper = v.upper()
+        if v_upper not in VALID_INSTRUMENT_TYPES:
+            raise ValueError(f"Invalid instrumentType '{v}'. Allowed: {sorted(VALID_INSTRUMENT_TYPES)}")
+        return v_upper
 
     @field_validator("universe")
     @classmethod

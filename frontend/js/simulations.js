@@ -87,6 +87,17 @@ export async function renderSimulations(container) {
         `;
 
         if (window.lucide) window.lucide.createIcons();
+
+        // If any simulation is running/submitting, auto-refresh after 2.5s
+        const hasRunning = sims.some(s => s.status === 'RUNNING' || s.status === 'SUBMITTING');
+        if (hasRunning) {
+            setTimeout(() => {
+                const curPage = window.location.hash.replace('#', '') || 'dashboard';
+                if (curPage === 'simulations') {
+                    renderSimulations(container);
+                }
+            }, 2500);
+        }
     } catch (err) {
         container.innerHTML = `<div class="card" style="color: var(--status-danger);">Error: ${err.message}</div>`;
     }

@@ -114,10 +114,17 @@ async def get_simulation_details(simulation_id: str, db: AsyncSession = Depends(
     }
 
 
+from backend.app.core.security import vault
+from backend.app.database.models import AlphaCandidate, BrainConnection, BrainSession, Simulation, SimulationMetric
+
+
 @router.post("/{simulation_id}/poll")
 async def poll_simulation(simulation_id: str, db: AsyncSession = Depends(get_db)):
     """Polls remote BRAIN API status and updates simulation state."""
-    stmt = select(Simulation).where(Simulation.id == simulation_id)
+    stmt = select(Simulation).where(Simulation.id == simulation_id).options(
+        selectinload(Simulation.candidate),
+        selectinload(Simulation.metrics)
+    )
     res = await db.execute(stmt)
     s = res.scalar_one_or_none()
 
@@ -127,11 +134,38 @@ async def poll_simulation(simulation_id: str, db: AsyncSession = Depends(get_db)
     if not s.brain_sim_id:
         return {"status": s.status, "message": "No BRAIN simulation ID attached to this record."}
 
-    poll_result = await brain_client.poll_simulation_status(s.brain_sim_id)
+    # Fetch cookies if available
+    cookies = None
+    conn_stmt = select(BrainConnection).where(BrainConnection.status == "CONNECTED", BrainConnection.is_active == True)
+    conn_res = await db.execute(conn_stmt)
+    brain_conn = conn_res.scalars().first()
+    if brain_conn:
+        sess_stmt = select(BrainSession).where(BrainSession.connection_id == brain_conn.id, BrainSession.is_valid == True)
+        sess_res = await db.execute(sess_stmt)
+        brain_sess = sess_res.scalars().first()
+        if brain_sess and brain_sess.encrypted_session_cookie:
+            try:
+                import json
+                cookie_str = vault.decrypt(brain_sess.encrypted_session_cookie)
+                cookies = json.loads(cookie_str)
+            except Exception:
+                pass
+
+    poll_result = await brain_client.poll_simulation_status(s.brain_sim_id, cookies=cookies)
     
-    if poll_result["status_code"] == 200:
+    if poll_result.get("status_code") == 200:
         data = poll_result.get("data", {})
-        if data.get("status") in ("COMPLETE", "ERROR") or "records" in data or "stats" in data:
+        if data.get("status") in ("COMPLETE", "ERROR", "CANCELLED") or "records" in data or "stats" in data:
             await simulation_orchestrator.update_simulation_from_response(s, data, db)
 
-    return {"simulation_id": s.id, "status": s.status, "classification": s.classification}
+    m = s.metrics
+    return {
+        "simulation_id": s.id,
+        "status": s.status,
+        "classification": s.classification,
+        "sharpe": m.sharpe if (m and m.has_valid_metrics) else None,
+        "fitness": m.fitness if (m and m.has_valid_metrics) else None,
+        "turnover": m.turnover if (m and m.has_valid_metrics) else None,
+        "margin_bps": m.margin_bps if (m and m.has_valid_metrics) else None,
+        "has_valid_metrics": bool(m and m.has_valid_metrics)
+    }
