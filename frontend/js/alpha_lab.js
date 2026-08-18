@@ -122,18 +122,23 @@ function renderGeneratedCandidates(candidates) {
     }
 
     let rowsHtml = candidates.map(c => {
-        const pf = c.preflight;
+        const decision = c.decision || (c.preflight ? c.preflight.decision : (c.preflight_status || 'PASS'));
+        const compatScore = c.compatibility_score ?? (c.preflight ? c.preflight.compatibility_score : 1.0);
+        const constRisk = c.constant_signal_risk ?? (c.preflight ? c.preflight.constant_signal_risk : 0.0);
+        const complexity = c.complexity_score ?? (c.preflight ? c.preflight.complexity_score : 1);
+        const stream = c.strategy_allocation || c.priority_bucket || 'EXPLOITATION';
+
         return `
             <tr>
                 <td><div class="code-expr">${c.expression}</div></td>
-                <td><span class="badge badge-info">${c.priority_bucket}</span></td>
-                <td>${renderBadge(pf.decision)}</td>
-                <td>${(pf.compatibility_score * 100).toFixed(0)}%</td>
-                <td>${(pf.constant_signal_risk * 100).toFixed(0)}%</td>
-                <td>${pf.complexity_score}</td>
+                <td><span class="badge badge-info">${stream}</span></td>
+                <td>${renderBadge(decision)}</td>
+                <td>${(compatScore * 100).toFixed(0)}%</td>
+                <td>${(constRisk * 100).toFixed(0)}%</td>
+                <td>${complexity}</td>
                 <td>
                     <div style="display: flex; gap: 6px;">
-                        <button class="btn btn-primary btn-sm" onclick="window.verdeUI.simulateCandidate('${c.id}')" ${pf.decision === 'REJECT' ? 'disabled title="Preflight rejected"' : ''}>
+                        <button class="btn btn-primary btn-sm" onclick="window.verdeUI.simulateCandidate('${c.id}')" ${decision === 'REJECT' ? 'disabled title="Preflight rejected"' : ''}>
                             <i data-lucide="play"></i> Simulate
                         </button>
                         <button class="btn btn-outline btn-sm" onclick="window.verdeUI.openCandidateModal('${c.id}')">
