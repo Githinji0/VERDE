@@ -85,16 +85,24 @@ window.verdeUI = {
     nextTutorialStep: () => onboardingEngine.nextStep(),
     prevTutorialStep: () => onboardingEngine.prevStep(),
     endTutorialTour: () => onboardingEngine.endTour(),
-    openCandidateModal: (id) => {
+    openCandidateModal: (id, fromExperimentId = null) => {
+        if (fromExperimentId) {
+            window._candidateModalFromExperiment = fromExperimentId;
+        }
         const modal = document.getElementById("candidate-modal");
         if (modal) {
             modal.classList.add("active");
-            populateCandidateModal(id);
+            populateCandidateModal(id, window._candidateModalFromExperiment);
         }
     },
     closeCandidateModal: () => {
         const modal = document.getElementById("candidate-modal");
         if (modal) modal.classList.remove("active");
+        if (window._candidateModalFromExperiment) {
+            const expId = window._candidateModalFromExperiment;
+            window._candidateModalFromExperiment = null;
+            window.verdeUI.openExperimentInspectorModal(expId);
+        }
     },
     openDiagnosticModal: (id) => {
         const modal = document.getElementById("diagnostic-modal");
@@ -384,7 +392,7 @@ async function populateExperimentInspectorModal(experimentId) {
                                     <td><span class="badge ${c.lifecycle_state === 'ELITE' || c.lifecycle_state === 'SUBMITTED' ? 'badge-success' : (c.lifecycle_state === 'PROMISING' ? 'badge-warning' : 'badge-danger')}" style="font-size: 10px;">${c.lifecycle_state}</span></td>
                                     <td><strong>${c.alpha_quality_score != null ? c.alpha_quality_score.toFixed(1) : 'N/A'}</strong></td>
                                     <td>
-                                        <button class="btn btn-outline btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="window.verdeUI.openCandidateModal('${c.id}')">Inspect Candidate</button>
+                                        <button class="btn btn-outline btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="window.verdeUI.openCandidateModal('${c.id}', '${exp.id}')">Inspect Candidate</button>
                                     </td>
                                 </tr>
                             `).join('')}

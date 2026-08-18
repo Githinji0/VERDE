@@ -466,6 +466,12 @@
     pointer-events: auto;
 }
 
+/* Explicit Modal Layer Stacking Hierarchy */
+#new-experiment-modal { z-index: 1000; }
+#experiment-inspector-modal { z-index: 1050; }
+#candidate-modal { z-index: 1150; }
+#diagnostic-modal { z-index: 1250; }
+
 .modal-box {
     background-color: #ffffff;
     border-radius: 18px;

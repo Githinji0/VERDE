@@ -86,7 +86,7 @@ export async function renderCandidates(container) {
     }
 }
 
-export async function populateCandidateModal(candidateId) {
+export async function populateCandidateModal(candidateId, fromExperimentId = null) {
     const body = document.getElementById("candidate-modal-body");
     if (!body) return;
 
@@ -102,6 +102,17 @@ export async function populateCandidateModal(candidateId) {
         const preflightBadge = renderBadge(c.preflight ? c.preflight.decision : c.preflight_status || "PASS");
 
         body.innerHTML = `
+            ${fromExperimentId ? `
+                <div style="margin-bottom: 14px; padding: 8px 12px; background: #e0f2fe; border: 1px solid rgba(2, 132, 199, 0.3); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #0369a1;">
+                    <span style="display: flex; align-items: center; gap: 6px; font-weight: 600;">
+                        <i data-lucide="flask-conical" style="width: 14px; height: 14px;"></i> Inspecting candidate within research experiment context
+                    </span>
+                    <button class="btn btn-outline btn-sm" style="padding: 2px 8px; font-size: 11px; background: #ffffff;" onclick="window.verdeUI.closeCandidateModal();">
+                        <i data-lucide="arrow-left" style="width: 12px; height: 12px;"></i> Return to Experiment
+                    </button>
+                </div>
+            ` : ''}
+
             <!-- Top Summary Header -->
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color); flex-wrap: wrap; gap: 10px;">
                 <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
