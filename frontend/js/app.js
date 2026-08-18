@@ -13,7 +13,7 @@ import { renderLogs, populateDiagnosticModal } from './logs.js';
 import { renderSettings } from './settings.js';
 import { renderQualityDashboard } from './quality_dashboard.js';
 import { onboardingEngine } from './tutorial.js';
-import { showToast, loadSavedUserUI, updateUserUI, syncBrainStatus } from './utils.js';
+import { showToast, loadSavedUserUI, updateUserUI, syncBrainStatus, renderTabSkeleton } from './utils.js';
 
 // Route Definitions
 const routes = {
@@ -57,6 +57,9 @@ async function navigateTo(page) {
     // Render page
     const container = document.getElementById('content-view');
     if (container) {
+        // Render tab loading skeleton before fetching route content
+        renderTabSkeleton(container);
+
         try {
             await routes[page].render(container);
         } catch (err) {

@@ -134,3 +134,27 @@ export async function syncBrainStatus() {
         console.warn("Failed to sync brain status:", e);
     }
 }
+
+export function renderTabSkeleton(container) {
+    if (!container) return;
+    container.innerHTML = `
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;">
+            <div class="skeleton-box" style="height: 76px; border-radius: var(--radius-md);"></div>
+            <div class="skeleton-box" style="height: 76px; border-radius: var(--radius-md);"></div>
+            <div class="skeleton-box" style="height: 76px; border-radius: var(--radius-md);"></div>
+            <div class="skeleton-box" style="height: 76px; border-radius: var(--radius-md);"></div>
+        </div>
+
+        <div class="skeleton-card">
+            <div class="skeleton-header">
+                <div class="skeleton-box skeleton-title-bar"></div>
+                <div class="skeleton-box skeleton-btn"></div>
+            </div>
+            <div class="skeleton-box skeleton-table-header"></div>
+            <div class="skeleton-row"><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div></div>
+            <div class="skeleton-row"><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div></div>
+            <div class="skeleton-row"><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div></div>
+            <div class="skeleton-row"><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div><div class="skeleton-box skeleton-cell"></div></div>
+        </div>
+    `;
+}
