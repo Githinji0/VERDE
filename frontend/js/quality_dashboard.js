@@ -107,10 +107,14 @@ export async function renderQualityDashboard(container) {
     await loadExperimentsList();
     await loadResearchGaps();
 
-    document.getElementById("btn-new-experiment")?.addEventListener("click", createNewExperimentPrompt);
+    document.getElementById("btn-new-experiment")?.addEventListener("click", () => {
+        if (window.verdeUI && window.verdeUI.openNewExperimentModal) {
+            window.verdeUI.openNewExperimentModal();
+        }
+    });
 }
 
-async function loadQualitySummary() {
+export async function loadQualitySummary() {
     try {
         const summary = await api.get("/api/research/quality-summary");
         const pRate = document.getElementById("quality-preflight-rate");
@@ -129,7 +133,7 @@ async function loadQualitySummary() {
     }
 }
 
-async function loadExperimentsList() {
+export async function loadExperimentsList() {
     const container = document.getElementById("experiments-list-container");
     if (!container) return;
     try {
@@ -162,7 +166,7 @@ async function loadExperimentsList() {
     }
 }
 
-async function loadResearchGaps() {
+export async function loadResearchGaps() {
     const container = document.getElementById("research-gaps-container");
     if (!container) return;
     try {
@@ -189,23 +193,5 @@ async function loadResearchGaps() {
         if (window.lucide) window.lucide.createIcons();
     } catch (e) {
         container.innerHTML = `<div style="color: var(--text-muted); font-size: 12px;">No research gaps detected.</div>`;
-    }
-}
-
-async function createNewExperimentPrompt() {
-    const title = prompt("Enter Experiment Title:", "Medium-Term Momentum Research Run");
-    if (!title) return;
-    try {
-        await api.post("/api/research/experiments", {
-            title: title,
-            hypothesis: "Medium-term momentum signals across liquid universe",
-            family_code: "MOMENTUM",
-            target_budget: 20
-        });
-        alert("Experiment started successfully!");
-        loadExperimentsList();
-        loadQualitySummary();
-    } catch (e) {
-        alert("Error starting experiment: " + e.message);
     }
 }

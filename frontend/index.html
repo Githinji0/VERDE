@@ -249,6 +249,58 @@
         </div>
     </div>
 
+    <!-- New Research Experiment Modal -->
+    <div class="modal-overlay" id="new-experiment-modal">
+        <div class="modal-box" style="max-width: 540px;">
+            <div class="modal-header">
+                <h3 class="card-title"><i data-lucide="flask-conical" style="color: var(--verde-primary);"></i> New Research Experiment</h3>
+                <button class="btn-modal-close" onclick="window.verdeUI.closeNewExperimentModal()" title="Close Modal">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+            <div class="modal-body" style="padding: 20px 24px;">
+                <form id="form-new-experiment" onsubmit="event.preventDefault(); window.verdeUI.submitNewExperiment();">
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: block;">Experiment Title</label>
+                        <input type="text" id="exp-title-input" class="form-control" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 13.5px; font-weight: 600;" value="Medium-Term Momentum Research Run" placeholder="Enter experiment title..." required>
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: block;">Research Hypothesis</label>
+                        <textarea id="exp-hypothesis-input" class="form-control" style="width: 100%; padding: 10px 14px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 12.5px; min-height: 65px; resize: vertical;" placeholder="Describe research hypothesis...">Medium-term momentum signals across liquid universe</textarea>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;">
+                        <div>
+                            <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: block;">Research Family</label>
+                            <select id="exp-family-select" class="form-control" style="width: 100%; padding: 9px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; background: #ffffff;">
+                                <option value="MOMENTUM" selected>MOMENTUM</option>
+                                <option value="MEAN_REVERSION">MEAN_REVERSION</option>
+                                <option value="VOLATILITY">VOLATILITY</option>
+                                <option value="QUALITY">QUALITY</option>
+                                <option value="VALUE">VALUE</option>
+                                <option value="GROWTH">GROWTH</option>
+                                <option value="SENTIMENT">SENTIMENT</option>
+                                <option value="ANALYST">ANALYST</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 6px; display: block;">Target Budget</label>
+                            <input type="number" id="exp-budget-input" class="form-control" style="width: 100%; padding: 9px 12px; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 13px; font-weight: 600;" value="20" min="5" max="100" required>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--border-light);">
+                        <button type="button" class="btn btn-outline" onclick="window.verdeUI.closeNewExperimentModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary" id="btn-submit-exp">
+                            <i data-lucide="flask-conical" style="width: 15px; height: 15px;"></i> Start Experiment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Onboarding Tutorial Overlay & Spotlight -->
     <div id="tutorial-overlay" class="tutorial-overlay">
         <div id="tutorial-spotlight" class="tutorial-spotlight"></div>

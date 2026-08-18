@@ -104,6 +104,67 @@ window.verdeUI = {
         const modal = document.getElementById("diagnostic-modal");
         if (modal) modal.classList.remove("active");
     },
+    openNewExperimentModal: () => {
+        const modal = document.getElementById("new-experiment-modal");
+        if (modal) {
+            modal.classList.add("active");
+            if (window.lucide) window.lucide.createIcons();
+            const titleInput = document.getElementById("exp-title-input");
+            if (titleInput) {
+                titleInput.focus();
+                titleInput.select();
+            }
+        }
+    },
+    closeNewExperimentModal: () => {
+        const modal = document.getElementById("new-experiment-modal");
+        if (modal) modal.classList.remove("active");
+    },
+    submitNewExperiment: async () => {
+        const title = document.getElementById("exp-title-input")?.value?.trim();
+        const hypothesis = document.getElementById("exp-hypothesis-input")?.value?.trim();
+        const family_code = document.getElementById("exp-family-select")?.value || "MOMENTUM";
+        const target_budget = parseInt(document.getElementById("exp-budget-input")?.value || "20", 10);
+
+        if (!title) {
+            showToast("Please enter an experiment title.", "warning");
+            return;
+        }
+
+        const submitBtn = document.getElementById("btn-submit-exp");
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i data-lucide="loader" class="spin"></i> Starting...`;
+        }
+
+        try {
+            await api.post("/api/research/experiments", {
+                title: title,
+                hypothesis: hypothesis || "Hypothesis-driven quantitative alpha research run",
+                family_code: family_code,
+                target_budget: target_budget
+            });
+            showToast(`Experiment '${title}' started successfully!`, "success");
+            window.verdeUI.closeNewExperimentModal();
+
+            // Refresh Quality Dashboard lists if on quality-dashboard page
+            try {
+                const { loadExperimentsList, loadQualitySummary } = await import('./quality_dashboard.js');
+                await loadExperimentsList();
+                await loadQualitySummary();
+            } catch (err) {
+                // Ignore if not on quality dashboard page
+            }
+        } catch (err) {
+            showToast(`Error starting experiment: ${err.message}`, "error");
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i data-lucide="flask-conical" style="width: 15px; height: 15px;"></i> Start Experiment`;
+                if (window.lucide) window.lucide.createIcons();
+            }
+        }
+    },
     openLogDetailModal: (id) => {
         const modal = document.getElementById("diagnostic-modal");
         if (modal) {
