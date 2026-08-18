@@ -39,19 +39,35 @@ class SimulationOrchestrator:
         brain_conn = conn_res.scalars().first()
 
         cookies = None
-        environment = brain_conn.environment if brain_conn else "SIMULATION"
+        environment = "SIMULATION"
+        brain_sess = None
 
         if brain_conn:
-            # Check for active session cookie
-            sess_stmt = select(BrainSession).where(BrainSession.connection_id == brain_conn.id, BrainSession.is_valid == True)
-            sess_res = await session.execute(sess_stmt)
-            brain_sess = sess_res.scalars().first()
-            if brain_sess and brain_sess.encrypted_session_cookie:
-                try:
-                    cookie_str = vault.decrypt(brain_sess.encrypted_session_cookie)
-                    cookies = json.loads(cookie_str)
-                except Exception:
-                    pass
+            if brain_conn.environment == "SIMULATION":
+                environment = "SIMULATION"
+            else:
+                # Check for active session cookie
+                sess_stmt = select(BrainSession).where(BrainSession.connection_id == brain_conn.id, BrainSession.is_valid == True)
+                sess_res = await session.execute(sess_stmt)
+                brain_sess = sess_res.scalars().first()
+                if brain_sess and brain_sess.encrypted_session_cookie:
+                    try:
+                        cookie_str = vault.decrypt(brain_sess.encrypted_session_cookie)
+                        cookies = json.loads(cookie_str)
+                        if cookies and isinstance(cookies, dict):
+                            environment = brain_conn.environment
+                    except Exception:
+                        cookies = None
+
+        # Fallback to Sandbox if trying to run remote without valid cookies
+        if environment != "SIMULATION" and not cookies:
+            verde_logger.log_event(
+                event="SIMULATION_FALLBACK_SANDBOX",
+                severity="WARNING",
+                component="SIMULATION_ENGINE",
+                message="No valid session cookies found for PROD connection. Falling back to local Sandbox Simulation Engine."
+            )
+            environment = "SIMULATION"
 
         # 3. Create Simulation Record in DB
         sim_settings = settings_dict or {
@@ -113,6 +129,29 @@ class SimulationOrchestrator:
             )
             # Launch background polling task to automatically resolve simulation to completion
             asyncio.create_task(self._poll_simulation_background(simulation.id, simulation.brain_sim_id, cookies))
+        elif submission_result["status"] in ("AUTH_FAILURE", "AUTH_ERROR_401", "AUTH_ERROR_403"):
+            if brain_sess:
+                brain_sess.is_valid = False
+                await session.commit()
+            verde_logger.log_event(
+                event="BRAIN_AUTH_EXPIRED_FALLBACK",
+                severity="WARNING",
+                component="SIMULATION_ENGINE",
+                message="BRAIN session expired during simulation. Auto-falling back to local Sandbox Engine."
+            )
+            sbx_result = await brain_client.submit_simulation(
+                expression=candidate.expression,
+                settings_dict=sim_settings,
+                cookies=None,
+                environment="SIMULATION",
+                family_code=candidate.family_code or "MOMENTUM"
+            )
+            simulation.brain_sim_id = sbx_result.get("brain_sim_id")
+            await self.update_simulation_from_response(
+                simulation,
+                sbx_result.get("data") or sbx_result.get("raw_response") or {},
+                session
+            )
         else:
             status_code = submission_result.get("status_code", 500)
             parsed = response_parser.parse_simulation_response(
@@ -184,8 +223,8 @@ class SimulationOrchestrator:
                 sub_time = sub_time.replace(tzinfo=timezone.utc)
             age_secs = (now - sub_time).total_seconds() if sub_time else 9999
 
-            # Case A: Sandbox simulation (starts with sbx_ or no brain_sim_id or brain_conn is null/SIMULATION)
-            if not sim.brain_sim_id or sim.brain_sim_id.startswith("sbx_") or not brain_conn or brain_conn.environment == "SIMULATION":
+            # Case A: Sandbox simulation (starts with sbx_ or no brain_sim_id or brain_conn is null/SIMULATION or no active cookies)
+            if not sim.brain_sim_id or sim.brain_sim_id.startswith("sbx_") or not brain_conn or brain_conn.environment == "SIMULATION" or not cookies:
                 from backend.app.brain.simulator import simulation_sandbox
                 cand_stmt = select(AlphaCandidate).where(AlphaCandidate.id == sim.candidate_id)
                 cand_res = await session.execute(cand_stmt)
