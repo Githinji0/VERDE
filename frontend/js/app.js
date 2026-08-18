@@ -428,7 +428,13 @@ function initApp() {
     // Hash change handler
     window.addEventListener("hashchange", () => {
         const page = window.location.hash.replace('#', '');
-        navigateTo(page);
+        if (page.startsWith('doc-sec-')) {
+            // Ignore in-page documentation section anchors
+            return;
+        }
+        if (routes[page]) {
+            navigateTo(page);
+        }
     });
 
     // Bind header status pill click
