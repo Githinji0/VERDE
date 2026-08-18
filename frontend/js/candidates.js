@@ -228,6 +228,31 @@ export async function populateCandidateModal(candidateId) {
                     </div>
                 ` : ''}
 
+                <!-- Portfolio Construction Pipeline Diagnostics -->
+                ${c.portfolio_telemetry && c.portfolio_telemetry.diagnostic_classification ? `
+                    <div style="margin-top: 12px; padding: 12px 14px; background: ${c.portfolio_telemetry.diagnostic_classification === 'VALID' ? '#f0fdf4' : '#fff1f2'}; border: 1px solid ${c.portfolio_telemetry.diagnostic_classification === 'VALID' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(244, 63, 94, 0.3)'}; border-radius: var(--radius-sm);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <strong style="font-size: 12px; color: ${c.portfolio_telemetry.diagnostic_classification === 'VALID' ? '#15803d' : '#be123c'};">
+                                <i data-lucide="layers" style="width: 14px; height: 14px; display: inline;"></i> Portfolio Pipeline Diagnostic
+                            </strong>
+                            <span class="badge" style="background: #ffffff; font-size: 10px;">Diagnostic: ${c.portfolio_telemetry.diagnostic_classification}</span>
+                        </div>
+                        <div style="display: flex; gap: 14px; font-size: 11.5px; color: var(--text-main);">
+                            <span>Last Nonzero Stage: <strong>${c.portfolio_telemetry.last_nonzero_stage || 'N/A'}</strong></span>
+                            <span>First Empty Stage: <strong style="color: #be123c;">${c.portfolio_telemetry.first_empty_stage || 'NONE'}</strong></span>
+                            <span>Positions Constructed: <strong>${c.portfolio_telemetry.position_count || 0}</strong></span>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- Redundancy Engine Analysis -->
+                ${c.redundancy_details && c.redundancy_details.reasons ? `
+                    <div style="margin-top: 10px; padding: 10px 12px; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 11.5px;">
+                        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 3px;">Redundancy & Novelty Assessment:</div>
+                        <div style="color: var(--text-muted);">${(c.redundancy_details.reasons || []).join(' &bull; ')}</div>
+                    </div>
+                ` : ''}
+
                 <!-- Fields and Operators Chips -->
                 <div style="margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; gap: 16px; font-size: 12.5px;">
                     <div>

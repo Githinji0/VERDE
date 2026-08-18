@@ -63,39 +63,55 @@ async def get_candidate_lineage_tree(candidate_id: str, db: AsyncSession = Depen
 
 @router.post("/experiments")
 async def create_research_experiment(payload: Dict[str, Any], db: AsyncSession = Depends(get_db)):
-    """Creates a new structured research experiment."""
+    """Creates a new structured research experiment and triggers multi-stage evaluation pipeline."""
     from backend.app.database.models import ResearchExperiment
+    from backend.app.generation.experiment_orchestrator import experiment_orchestrator
+
     title = payload.get("title", "New Research Experiment")
-    hypothesis = payload.get("hypothesis", "Medium-term momentum cross-sectional signal")
     family_code = payload.get("family_code", "MOMENTUM")
     budget = payload.get("target_budget", 50)
+    
+    structured_hyp = {
+        "family": family_code,
+        "hypothesis": payload.get("hypothesis", f"Medium-term {family_code.lower()} signals across liquid universe"),
+        "mechanism": payload.get("mechanism", f"Cross-sectional {family_code.lower()} momentum"),
+        "expected_behavior": payload.get("expected_behavior", "Positive continuation"),
+        "horizon": payload.get("horizon", "MEDIUM_TERM"),
+        "universe": payload.get("universe", "LIQUID"),
+        "neutralization": payload.get("neutralization", "SUBINDUSTRY"),
+        "research_question": payload.get("research_question", f"Does {family_code} provide persistent cross-sectional signal?")
+    }
 
     exp = ResearchExperiment(
         title=title,
-        hypothesis=hypothesis,
+        hypothesis=structured_hyp["hypothesis"],
         family_code=family_code,
         target_budget=budget,
+        structured_hypothesis=structured_hyp,
+        current_stage="CREATED",
+        status="CREATED",
         exploitation_rate=payload.get("exploitation_rate", 0.40),
         mutation_rate=payload.get("mutation_rate", 0.20),
         gap_exploration_rate=payload.get("gap_exploration_rate", 0.15),
         composite_rate=payload.get("composite_rate", 0.10),
-        novelty_rate=payload.get("novelty_rate", 0.15),
-        status="ACTIVE"
+        novelty_rate=payload.get("novelty_rate", 0.15)
     )
     db.add(exp)
     await db.commit()
     await db.refresh(exp)
 
-    # Trigger candidate generation batch for this experiment
-    from backend.app.generation.hypothesis_engine import hypothesis_engine
-    await hypothesis_engine.generate_and_preflight_candidates(
-        family_code=family_code,
-        count=min(10, budget),
-        experiment_id=exp.id,
-        session=db
-    )
+    # Execute complete 10-stage evaluation pipeline
+    await experiment_orchestrator.execute_experiment_pipeline(exp.id, db)
+    await db.refresh(exp)
 
     return exp
+
+
+@router.post("/experiments/{experiment_id}/run")
+async def run_experiment_pipeline(experiment_id: str, db: AsyncSession = Depends(get_db)):
+    """Triggers or resumes multi-stage evaluation pipeline for an experiment."""
+    from backend.app.generation.experiment_orchestrator import experiment_orchestrator
+    return await experiment_orchestrator.execute_experiment_pipeline(experiment_id, db)
 
 
 @router.get("/experiments")
@@ -104,6 +120,43 @@ async def list_research_experiments(db: AsyncSession = Depends(get_db)):
     from backend.app.database.models import ResearchExperiment
     res = await db.execute(select(ResearchExperiment).order_by(ResearchExperiment.created_at.desc()))
     return res.scalars().all()
+
+
+@router.get("/experiments/{experiment_id}")
+async def get_experiment_details(experiment_id: str, db: AsyncSession = Depends(get_db)):
+    """Returns granular experiment details, structured hypothesis, candidate funnel, candidate list, and research conclusion."""
+    from backend.app.database.models import ResearchExperiment, AlphaCandidate, SystemEvent
+    exp = await db.get(ResearchExperiment, experiment_id)
+    if not exp:
+        raise HTTPException(status_code=404, detail="Experiment not found")
+
+    cands_stmt = select(AlphaCandidate).where(AlphaCandidate.experiment_id == experiment_id)
+    cands = (await db.execute(cands_stmt)).scalars().all()
+
+    events_stmt = select(SystemEvent).where(SystemEvent.payload["experiment_id"].as_string() == experiment_id).order_by(SystemEvent.created_at.asc())
+    try:
+        events = (await db.execute(events_stmt)).scalars().all()
+    except Exception:
+        events = []
+
+    return {
+        "experiment": exp,
+        "structured_hypothesis": exp.structured_hypothesis,
+        "funnel": {
+            "generated": exp.candidates_generated,
+            "validated": exp.candidates_validated,
+            "evaluated": exp.candidates_evaluated,
+            "pending": exp.candidates_pending,
+            "rejected": exp.candidates_rejected,
+            "promising": exp.candidates_promising,
+            "elite": exp.elite_alpha_count,
+            "submitted": exp.candidates_submitted,
+            "portfolio_success": exp.portfolio_success_count
+        },
+        "candidates": cands,
+        "research_conclusion": exp.research_conclusion,
+        "events": events
+    }
 
 
 @router.get("/quality-summary")

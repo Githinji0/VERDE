@@ -123,10 +123,25 @@ window.verdeUI = {
         const modal = document.getElementById("new-experiment-modal");
         if (modal) modal.classList.remove("active");
     },
+    openExperimentInspectorModal: (id) => {
+        const modal = document.getElementById("experiment-inspector-modal");
+        if (modal) {
+            modal.classList.add("active");
+            populateExperimentInspectorModal(id);
+        }
+    },
+    closeExperimentInspectorModal: () => {
+        const modal = document.getElementById("experiment-inspector-modal");
+        if (modal) modal.classList.remove("active");
+    },
     submitNewExperiment: async () => {
         const title = document.getElementById("exp-title-input")?.value?.trim();
         const hypothesis = document.getElementById("exp-hypothesis-input")?.value?.trim();
+        const research_question = document.getElementById("exp-question-input")?.value?.trim();
+        const mechanism = document.getElementById("exp-mechanism-input")?.value?.trim();
+        const expected_behavior = document.getElementById("exp-behavior-input")?.value?.trim();
         const family_code = document.getElementById("exp-family-select")?.value || "MOMENTUM";
+        const neutralization = document.getElementById("exp-neutralization-select")?.value || "SUBINDUSTRY";
         const target_budget = parseInt(document.getElementById("exp-budget-input")?.value || "20", 10);
 
         if (!title) {
@@ -137,17 +152,21 @@ window.verdeUI = {
         const submitBtn = document.getElementById("btn-submit-exp");
         if (submitBtn) {
             submitBtn.disabled = true;
-            submitBtn.innerHTML = `<i data-lucide="loader" class="spin"></i> Starting...`;
+            submitBtn.innerHTML = `<i data-lucide="loader" class="spin"></i> Running Evaluation Pipeline...`;
         }
 
         try {
             await api.post("/api/research/experiments", {
                 title: title,
                 hypothesis: hypothesis || "Hypothesis-driven quantitative alpha research run",
+                research_question: research_question || "Does signal provide persistent cross-sectional information?",
+                mechanism: mechanism || "Cross-sectional alpha mechanism",
+                expected_behavior: expected_behavior || "Positive continuation",
                 family_code: family_code,
+                neutralization: neutralization,
                 target_budget: target_budget
             });
-            showToast(`Experiment '${title}' started successfully!`, "success");
+            showToast(`Experiment '${title}' initiated and evaluated through multi-stage pipeline!`, "success");
             window.verdeUI.closeNewExperimentModal();
 
             // Refresh Quality Dashboard lists if on quality-dashboard page
@@ -163,7 +182,7 @@ window.verdeUI = {
         } finally {
             if (submitBtn) {
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = `<i data-lucide="flask-conical" style="width: 15px; height: 15px;"></i> Start Experiment`;
+                submitBtn.innerHTML = `<i data-lucide="flask-conical" style="width: 15px; height: 15px;"></i> Initiate Research Pipeline`;
                 if (window.lucide) window.lucide.createIcons();
             }
         }
@@ -253,6 +272,132 @@ function runSplashBootSequence() {
 
     // Hard safety timeout: guaranteed dismiss within 350ms
     setTimeout(dismissSplash, 350);
+}
+
+async function populateExperimentInspectorModal(experimentId) {
+    const body = document.getElementById("experiment-inspector-modal-body");
+    if (!body) return;
+
+    body.innerHTML = `
+        <div style="text-align: center; padding: 30px;">
+            <i data-lucide="loader" class="spin" style="width: 24px; height: 24px; color: var(--verde-primary);"></i>
+            <p style="margin-top: 8px; font-size: 13px; color: var(--text-muted);">Loading experiment details and evaluation pipeline telemetry...</p>
+        </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+
+    try {
+        const data = await api.get(`/api/research/experiments/${experimentId}`);
+        const exp = data.experiment;
+        const hyp = data.structured_hypothesis || {};
+        const funnel = data.funnel || {};
+        const cands = data.candidates || [];
+        const conc = data.research_conclusion || {};
+
+        body.innerHTML = `
+            <!-- Experiment Header & Hypothesis -->
+            <div style="padding: 16px 18px; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <h2 style="font-size: 17px; font-weight: 800; color: var(--text-main); margin: 0;">${exp.title}</h2>
+                        <div style="font-size: 12.5px; font-weight: 700; color: #0284c7; margin-top: 4px;">Question: "${hyp.research_question || exp.hypothesis}"</div>
+                    </div>
+                    <span class="badge ${exp.status === 'COMPLETED' ? 'badge-success' : 'badge-info'}" style="font-size: 11px; font-weight: 700;">${exp.status}</span>
+                </div>
+                <div style="margin-top: 10px; font-size: 12.5px; color: var(--text-muted); line-height: 1.5; border-top: 1px solid var(--border-light); padding-top: 8px;">
+                    <strong>Core Hypothesis:</strong> ${hyp.hypothesis || exp.hypothesis}
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 11.5px; color: var(--text-muted);">
+                    <span>Family: <strong style="color: var(--text-main);">${exp.family_code}</strong></span>
+                    <span>Mechanism: <strong style="color: var(--text-main);">${hyp.mechanism || 'N/A'}</strong></span>
+                    <span>Behavior: <strong style="color: var(--text-main);">${hyp.expected_behavior || 'N/A'}</strong></span>
+                    <span>Neutralization: <strong style="color: var(--text-main);">${hyp.neutralization || 'SUBINDUSTRY'}</strong></span>
+                </div>
+            </div>
+
+            <!-- Candidate Funnel Breakdown -->
+            <div style="margin-bottom: 20px;">
+                <h4 style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Evaluation Candidate Funnel</h4>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; font-size: 11px;">
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: var(--text-muted); display: block; font-size: 9.5px;">GENERATED</span>
+                        <strong style="font-size: 15px;">${funnel.generated || 0}</strong>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: var(--text-muted); display: block; font-size: 9.5px;">VALIDATED</span>
+                        <strong style="font-size: 15px; color: #0284c7;">${funnel.validated || 0}</strong>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: var(--text-muted); display: block; font-size: 9.5px;">EVALUATED</span>
+                        <strong style="font-size: 15px; color: #0284c7;">${funnel.evaluated || 0}</strong>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: #ef4444; display: block; font-size: 9.5px;">REJECTED</span>
+                        <strong style="font-size: 15px; color: #ef4444;">${funnel.rejected || 0}</strong>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: #eab308; display: block; font-size: 9.5px;">PROMISING</span>
+                        <strong style="font-size: 15px; color: #ca8a04;">${funnel.promising || 0}</strong>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: #22c55e; display: block; font-size: 9.5px;">ELITE</span>
+                        <strong style="font-size: 15px; color: #22c55e;">${funnel.elite || 0}</strong>
+                    </div>
+                    <div style="background: #f1f5f9; padding: 10px 4px; border-radius: var(--radius-sm);">
+                        <span style="color: #22c55e; display: block; font-size: 9.5px;">SUBMITTED</span>
+                        <strong style="font-size: 15px; color: #22c55e;">${funnel.submitted || 0}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Synthesized Research Conclusion -->
+            ${conc.key_finding ? `
+                <div style="padding: 14px 16px; background: #f0fdf4; border: 1px solid rgba(34, 197, 94, 0.3); border-radius: var(--radius-md); margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <strong style="font-size: 13px; color: #15803d;"><i data-lucide="brain-circuit" style="width: 15px; height: 15px; display: inline;"></i> Research Conclusion & Synthesis</strong>
+                        <span class="badge" style="background: #dcfce7; color: #15803d; font-size: 10px;">${conc.confidence || 'EVIDENCE_BASED'}</span>
+                    </div>
+                    <p style="font-size: 12px; color: #166534; margin: 0 0 6px 0; line-height: 1.45;">${conc.key_finding}</p>
+                    <div style="font-size: 12px; font-weight: 700; color: #15803d;">Decision: ${conc.research_decision}</div>
+                </div>
+            ` : ''}
+
+            <!-- Candidate Evaluation Table -->
+            <div>
+                <h4 style="font-size: 11.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Evaluated Candidates (${cands.length})</h4>
+                <div class="table-container" style="max-height: 240px; overflow-y: auto;">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Candidate ID</th>
+                                <th>Expression</th>
+                                <th>Lifecycle State</th>
+                                <th>Quality Score</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cands.map(c => `
+                                <tr>
+                                    <td><code style="font-size: 11px; font-weight: 700;">${c.id.substring(0, 8)}</code></td>
+                                    <td><code style="font-size: 11px; color: var(--text-main);">${c.expression}</code></td>
+                                    <td><span class="badge ${c.lifecycle_state === 'ELITE' || c.lifecycle_state === 'SUBMITTED' ? 'badge-success' : (c.lifecycle_state === 'PROMISING' ? 'badge-warning' : 'badge-danger')}" style="font-size: 10px;">${c.lifecycle_state}</span></td>
+                                    <td><strong>${c.alpha_quality_score != null ? c.alpha_quality_score.toFixed(1) : 'N/A'}</strong></td>
+                                    <td>
+                                        <button class="btn btn-outline btn-sm" style="padding: 3px 8px; font-size: 11px;" onclick="window.verdeUI.openCandidateModal('${c.id}')">Inspect Candidate</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+        if (window.lucide) window.lucide.createIcons();
+    } catch (e) {
+        console.error("Error populating experiment inspector:", e);
+        body.innerHTML = `<div style="color: var(--status-danger); padding: 20px;">Failed to load experiment inspector: ${e.message}</div>`;
+    }
 }
 
 function initApp() {

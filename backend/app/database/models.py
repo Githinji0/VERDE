@@ -181,6 +181,12 @@ class AlphaCandidate(Base):
     experiment_id = Column(String(36), nullable=True, index=True)
     explainability_rationale = Column(JSON, default=dict)
 
+    # Granular Evaluation Pipeline Telemetry
+    validation_details = Column(JSON, default=dict)
+    portfolio_telemetry = Column(JSON, default=dict)
+    redundancy_details = Column(JSON, default=dict)
+    quality_breakdown = Column(JSON, default=dict)
+
     # Lineage
     parent_id = Column(String(36), ForeignKey("alpha_candidates.id"), nullable=True)
     mutation_type = Column(String(100), nullable=True)
@@ -472,6 +478,25 @@ class ResearchLog(Base):
     diagnostic_metadata = Column(JSON, default=dict)
 
 
+class ResearchMemory(Base):
+    __tablename__ = "research_memory"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_id = Column(String(36), ForeignKey("alpha_candidates.id"), nullable=True)
+    family_code = Column(String(50), nullable=False)
+    expression = Column(Text, nullable=False)
+    fields_used = Column(JSON, default=list)
+    operators_used = Column(JSON, default=list)
+    quality_score = Column(Float, default=0.0)
+    sim_sharpe = Column(Float, default=0.0)
+    sim_fitness = Column(Float, default=0.0)
+    sim_turnover = Column(Float, default=0.0)
+    preflight_decision = Column(String(50), default="PASS")
+    preflight_reason = Column(Text, nullable=True)
+    research_insights = Column(JSON, default=list)
+    created_at = Column(DateTime, default=get_utc_now)
+
+
 class WorkerJob(Base):
     __tablename__ = "worker_jobs"
 
@@ -514,14 +539,27 @@ class ResearchExperiment(Base):
     composite_rate = Column(Float, default=0.10)
     novelty_rate = Column(Float, default=0.15)
 
-    status = Column(String(50), default="ACTIVE")  # ACTIVE, COMPLETED, PAUSED
+    # Structured Hypothesis Details
+    structured_hypothesis = Column(JSON, default=dict)
+    current_stage = Column(String(50), default="CREATED")  # CREATED, HYPOTHESIS_DEFINED, GENERATING, GENERATED, VALIDATING, EVALUATING, QUALITY_REVIEW, RESEARCH_REVIEW, SUBMISSION_REVIEW, COMPLETED
+    stage_progress = Column(JSON, default=dict)
+
+    status = Column(String(50), default="CREATED")  # CREATED, HYPOTHESIS_DEFINED, GENERATING, GENERATED, VALIDATING, EVALUATING, QUALITY_REVIEW, RESEARCH_REVIEW, SUBMISSION_REVIEW, COMPLETED, GENERATION_FAILED, VALIDATION_FAILED, EVALUATION_FAILED, CANCELLED
     candidates_generated = Column(Integer, default=0)
+    candidates_validated = Column(Integer, default=0)
+    candidates_evaluated = Column(Integer, default=0)
+    candidates_pending = Column(Integer, default=0)
+    candidates_rejected = Column(Integer, default=0)
+    candidates_promising = Column(Integer, default=0)
     candidates_rejected_preflight = Column(Integer, default=0)
     candidates_submitted = Column(Integer, default=0)
     portfolio_empty_count = Column(Integer, default=0)
+    portfolio_success_count = Column(Integer, default=0)
     strong_alpha_count = Column(Integer, default=0)
     elite_alpha_count = Column(Integer, default=0)
     average_quality_score = Column(Float, nullable=True)
+
+    research_conclusion = Column(JSON, default=dict)
 
     created_at = Column(DateTime, default=get_utc_now)
     completed_at = Column(DateTime, nullable=True)

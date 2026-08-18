@@ -138,7 +138,7 @@ export async function loadExperimentsList() {
     if (!container) return;
     try {
         const exps = await api.get("/api/research/experiments");
-        if (exps.length === 0) {
+        if (!exps || exps.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 24px; color: var(--text-muted);">
                     <p style="font-size: 13px;">No research experiments started yet.</p>
@@ -147,21 +147,72 @@ export async function loadExperimentsList() {
             return;
         }
 
-        container.innerHTML = exps.map(e => `
-            <div style="padding: 12px 14px; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 10px; background: #ffffff;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <strong style="font-size: 13.5px; color: var(--text-main);">${e.title}</strong>
-                    <span class="badge badge-success" style="font-size: 10.5px;">${e.status}</span>
+        container.innerHTML = exps.map(e => {
+            const hyp = e.structured_hypothesis || {};
+            const reqQuestion = hyp.research_question || e.hypothesis;
+            const statusClass = e.status === "COMPLETED" ? "badge-success" : (e.status.includes("FAILED") ? "badge-danger" : "badge-info");
+            
+            // Build 7-stage progress indicator
+            const stages = [
+                { name: "HYPOTHESIS", done: true },
+                { name: "GENERATION", done: e.candidates_generated > 0 },
+                { name: "VALIDATION", done: e.candidates_validated > 0 },
+                { name: "EVALUATION", done: e.candidates_evaluated > 0 },
+                { name: "QUALITY", done: (e.candidates_rejected + e.candidates_promising + e.elite_alpha_count) > 0 },
+                { name: "RESEARCH REVIEW", done: e.status === "COMPLETED" },
+                { name: "SUBMISSION", done: e.candidates_submitted > 0 }
+            ];
+
+            const progressHtml = stages.map((s, idx) => `
+                <div style="display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: ${s.done ? 'var(--verde-primary, #22c55e)' : '#94a3b8'};">
+                    <span>${s.name}</span>
+                    <span style="font-size: 11px;">${s.done ? '✓' : '○'}</span>
+                    ${idx < stages.length - 1 ? '<span style="color: #cbd5e1; margin: 0 2px;">→</span>' : ''}
                 </div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;">${e.hypothesis}</div>
-                <div style="display: flex; gap: 14px; margin-top: 8px; font-size: 11.5px; color: var(--text-muted);">
-                    <span>Generated: <strong>${e.candidates_generated}/${e.target_budget}</strong></span>
-                    <span>Rejected: <strong style="color: #ef4444;">${e.candidates_rejected_preflight}</strong></span>
-                    <span>Elite: <strong style="color: #22c55e;">${e.elite_alpha_count}</strong></span>
+            `).join('');
+
+            return `
+                <div onclick="window.verdeUI.openExperimentInspectorModal('${e.id}')" style="padding: 16px 18px; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-bottom: 12px; background: #ffffff; cursor: pointer; transition: all 0.2s ease; box-shadow: var(--shadow-card);" onmouseover="this.style.borderColor='var(--verde-primary)';" onmouseout="this.style.borderColor='var(--border-light)';">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <strong style="font-size: 14px; color: var(--text-main);">${e.title}</strong>
+                                <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 10px; font-weight: 700;">${e.family_code}</span>
+                            </div>
+                            <div style="font-size: 12px; font-weight: 600; color: #0284c7; margin-top: 3px;">Q: "${reqQuestion}"</div>
+                        </div>
+                        <span class="badge ${statusClass}" style="font-size: 10.5px; font-weight: 700;">${e.status}</span>
+                    </div>
+
+                    <!-- Multi-Stage Progress Ribbon -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px; background: #f8fafc; border-radius: var(--radius-sm); border: 1px solid #f1f5f9; margin: 10px 0;">
+                        ${progressHtml}
+                    </div>
+
+                    <!-- Granular Candidate Funnel Statistics Grid -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border-light); font-size: 11.5px; text-align: center;">
+                        <div style="background: #f8fafc; padding: 6px 4px; border-radius: 4px;">
+                            <span style="color: var(--text-muted); display: block; font-size: 10px;">GENERATED</span>
+                            <strong>${e.candidates_generated}</strong>
+                        </div>
+                        <div style="background: #f8fafc; padding: 6px 4px; border-radius: 4px;">
+                            <span style="color: var(--text-muted); display: block; font-size: 10px;">EVALUATED</span>
+                            <strong style="color: #0284c7;">${e.candidates_evaluated}</strong>
+                        </div>
+                        <div style="background: #f8fafc; padding: 6px 4px; border-radius: 4px;">
+                            <span style="color: var(--text-muted); display: block; font-size: 10px;">REJECTED</span>
+                            <strong style="color: #ef4444;">${e.candidates_rejected}</strong>
+                        </div>
+                        <div style="background: #f8fafc; padding: 6px 4px; border-radius: 4px;">
+                            <span style="color: var(--text-muted); display: block; font-size: 10px;">PROMISING / ELITE</span>
+                            <strong style="color: #22c55e;">${e.candidates_promising} / ${e.elite_alpha_count}</strong>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } catch (e) {
+        console.error("Failed to load experiments list:", e);
         container.innerHTML = `<div style="color: var(--status-danger); font-size: 12px;">Failed to load experiments.</div>`;
     }
 }
@@ -171,11 +222,13 @@ export async function loadResearchGaps() {
     if (!container) return;
     try {
         const gaps = await api.get("/api/research/gaps");
-        const underexplored = gaps.underexplored_families || [];
+        const underexplored = gaps.underexplored_gaps || gaps.underexplored_families || [];
+        const allocations = gaps.research_allocation || {};
+
         if (underexplored.length === 0) {
             container.innerHTML = `
                 <div style="padding: 10px; background: #f0fdf4; border-radius: var(--radius-sm); border: 1px solid rgba(34, 197, 94, 0.2); color: #16a34a; font-size: 12px;">
-                    <i data-lucide="check-circle" style="width: 14px; height: 14px; display: inline;"></i> All 15 research families have broad candidate coverage.
+                    <i data-lucide="check-circle" style="width: 14px; height: 14px; display: inline;"></i> All research families have active evidence-backed candidate coverage.
                 </div>
             `;
             if (window.lucide) window.lucide.createIcons();
@@ -183,10 +236,17 @@ export async function loadResearchGaps() {
         }
 
         container.innerHTML = `
-            <div style="margin-bottom: 8px; font-weight: 700; font-size: 12px; color: var(--text-muted);">Recommended Exploration Allocation:</div>
+            <div style="margin-bottom: 8px; font-weight: 700; font-size: 11.5px; color: var(--text-muted); text-transform: uppercase;">Evidence-Driven Gap Detection:</div>
             ${underexplored.slice(0, 3).map(g => `
-                <div style="padding: 8px 10px; background: #fffbe6; border: 1px solid rgba(234, 179, 8, 0.3); border-radius: var(--radius-sm); margin-bottom: 6px; font-size: 12px;">
-                    <strong style="color: #ca8a04;">${g.family_code}</strong>: ${g.reason}
+                <div style="padding: 10px 12px; background: #fffbe6; border: 1px solid rgba(234, 179, 8, 0.3); border-radius: var(--radius-sm); margin-bottom: 8px; font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong style="color: #ca8a04; font-size: 12.5px;">${g.family_code}</strong>
+                        <span class="badge" style="background: #fef08a; color: #854d0e; font-size: 10px;">${allocations[g.family_code] || '25%'} Budget</span>
+                    </div>
+                    <div style="color: var(--text-muted); font-size: 11.5px; margin-top: 4px;">
+                        Coverage: <strong>${g.coverage}</strong> &bull; Evaluated: <strong>${g.candidates_evaluated || 0}</strong> &bull; Elite: <strong>${g.elite_count || 0}</strong>
+                    </div>
+                    <div style="color: #854d0e; font-size: 11.5px; font-weight: 600; margin-top: 4px;">${g.recommendation}</div>
                 </div>
             `).join('')}
         `;
