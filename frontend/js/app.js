@@ -11,6 +11,8 @@ import { renderAILab } from './ai_lab.js';
 import { renderBrainConnection } from './brain_connection.js';
 import { renderLogs, populateDiagnosticModal } from './logs.js';
 import { renderSettings } from './settings.js';
+import { renderQualityDashboard } from './quality_dashboard.js';
+import { onboardingEngine } from './tutorial.js';
 import { showToast, loadSavedUserUI, updateUserUI, syncBrainStatus } from './utils.js';
 
 // Route Definitions
@@ -21,6 +23,7 @@ const routes = {
     'families': { title: 'Research Families', render: renderAlphaLab },
     'simulations': { title: 'Simulations', render: renderSimulations },
     'candidates': { title: 'Candidates', render: renderCandidates },
+    'quality-dashboard': { title: 'Quality Control V2', render: renderQualityDashboard },
     'analytics': { title: 'Analytics', render: renderAnalytics },
     'pareto': { title: 'Pareto Lab', render: renderParetoLab },
     'memory': { title: 'Research Memory', render: renderResearchMemory },
@@ -75,6 +78,10 @@ async function navigateTo(page) {
 // Global UI Object
 window.verdeUI = {
     navigateTo,
+    startTutorialTour: () => onboardingEngine.startTour(),
+    nextTutorialStep: () => onboardingEngine.nextStep(),
+    prevTutorialStep: () => onboardingEngine.prevStep(),
+    endTutorialTour: () => onboardingEngine.endTour(),
     openCandidateModal: (id) => {
         const modal = document.getElementById("candidate-modal");
         if (modal) {

@@ -38,6 +38,7 @@ async def init_db():
         await conn.run_sync(Base.metadata.create_all)
         # Migrate any missing columns in simulations table for SQLite compatibility
         await conn.run_sync(_migrate_simulations_table)
+        await conn.run_sync(_migrate_alpha_candidates_table)
 
 
 def _migrate_simulations_table(sync_conn):
@@ -72,4 +73,34 @@ def _migrate_simulations_table(sync_conn):
                 sync_conn.execute(text(f"ALTER TABLE simulations ADD COLUMN {col_name} {col_type}"))
             except Exception:
                 pass
+
+
+def _migrate_alpha_candidates_table(sync_conn):
+    """Refreshes sqlite schema if new columns were added to AlphaCandidate model."""
+    try:
+        from sqlalchemy import text
+        res = sync_conn.execute(text("PRAGMA table_info(alpha_candidates)"))
+        existing_cols = {row[1] for row in res.fetchall()}
+    except Exception:
+        return
+
+    cols_to_add = {
+        "lifecycle_state": "VARCHAR(50) DEFAULT 'GENERATED'",
+        "pre_brain_score": "FLOAT",
+        "novelty_score": "FLOAT",
+        "alpha_quality_score": "FLOAT",
+        "robustness_score": "FLOAT",
+        "correlation_score": "FLOAT",
+        "experiment_id": "VARCHAR(36)",
+        "explainability_rationale": "JSON"
+    }
+
+    from sqlalchemy import text
+    for col_name, col_type in cols_to_add.items():
+        if col_name not in existing_cols:
+            try:
+                sync_conn.execute(text(f"ALTER TABLE alpha_candidates ADD COLUMN {col_name} {col_type}"))
+            except Exception:
+                pass
+
 

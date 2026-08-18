@@ -134,5 +134,61 @@ class ResearchMemoryEngine:
 
         await session.commit()
 
+    @staticmethod
+    async def detect_research_gaps(session: AsyncSession) -> Dict[str, Any]:
+        """
+        Analyzes the research database to discover underexplored families, field categories,
+        and operator combinations to guide intelligent research exploration.
+        """
+        fam_stmt = select(FamilyPerformance)
+        fam_res = await session.execute(fam_stmt)
+        family_perfs = fam_res.scalars().all()
+
+        underexplored_families = []
+        for fp in family_perfs:
+            if (fp.total_candidates or 0) < 5:
+                underexplored_families.append({
+                    "family_code": fp.family_code,
+                    "tested_candidates": fp.total_candidates or 0,
+                    "reason": f"Only {fp.total_candidates or 0} candidates explored."
+                })
+
+        field_stmt = select(FieldPerformance)
+        field_res = await session.execute(field_stmt)
+        field_perfs = field_res.scalars().all()
+
+        underexplored_fields = [fp.field_name for fp in field_perfs if (fp.total_candidates or 0) < 3]
+
+        return {
+            "underexplored_families": underexplored_families,
+            "underexplored_fields": underexplored_fields,
+            "recommended_budget_allocation": {
+                "exploration_rate": 0.40 if underexplored_families else 0.20,
+                "exploitation_rate": 0.60 if underexplored_families else 0.80
+            }
+        }
+
+    @staticmethod
+    async def get_evidence_weighted_memory(session: AsyncSession, min_samples: int = 3) -> Dict[str, Any]:
+        """
+        Returns evidence-weighted performance statistics, filtering out unconfident single-sample spikes.
+        """
+        fam_stmt = select(FamilyPerformance).where(FamilyPerformance.total_candidates >= min_samples)
+        fam_res = await session.execute(fam_stmt)
+        top_families = sorted(fam_res.scalars().all(), key=lambda f: f.avg_sharpe or 0.0, reverse=True)
+
+        return {
+            "top_families": [
+                {
+                    "family_code": f.family_code,
+                    "avg_sharpe": f.avg_sharpe,
+                    "avg_fitness": f.avg_fitness,
+                    "success_rate": f.success_rate,
+                    "total_candidates": f.total_candidates
+                } for f in top_families
+            ]
+        }
+
 
 research_memory = ResearchMemoryEngine()
+

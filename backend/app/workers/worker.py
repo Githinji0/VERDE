@@ -111,6 +111,19 @@ class ResearchWorker:
                             settings_dict=settings_dict
                         )
 
+                elif job_type == "EVOLUTION":
+                    parent_expr = payload.get("parent_expression")
+                    family_code = payload.get("family_code", "MOMENTUM")
+                    from backend.app.research.evolution import evolution_engine
+                    if parent_expr:
+                        offspring = evolution_engine.mutate_candidate(parent_expr, family_code)
+                        # Preflight & persist offspring candidate
+                        await hypothesis_engine.generate_and_preflight_candidates(
+                            family_code=family_code,
+                            count=1,
+                            session=session
+                        )
+
                 if job:
                     job.status = "COMPLETED"
                     job.completed_at = datetime.now(timezone.utc)

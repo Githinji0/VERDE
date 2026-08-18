@@ -109,8 +109,15 @@
 
                     <a class="nav-item" data-page="candidates">
                         <div class="nav-item-left">
-                            <i data-lucide="file-code"></i>
+                            <i data-lucide="microscope"></i>
                             <span>Candidates</span>
+                        </div>
+                    </a>
+
+                    <a class="nav-item" data-page="quality-dashboard">
+                        <div class="nav-item-left">
+                            <i data-lucide="shield-check" style="color: #22c55e;"></i>
+                            <span>Quality Control V2</span>
                         </div>
                     </a>
 
@@ -193,6 +200,11 @@
                         <span class="icon-badge-dot"></span>
                     </div>
 
+                    <button class="btn-header-cta btn-header-tour" id="btn-start-tour" onclick="window.verdeUI.startTutorialTour()" title="Start Guided Onboarding Tour">
+                        <i data-lucide="sparkles" style="width: 15px; height: 15px;"></i>
+                        <span>Guided Tour</span>
+                    </button>
+
                     <button class="btn-header-cta" id="main-header-action" onclick="window.verdeUI.navigateTo('alpha-lab')">
                         <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
                         <span id="header-action-label">Generate Alphas</span>
@@ -233,6 +245,37 @@
             </div>
             <div class="modal-body" id="diagnostic-modal-body">
                 <!-- Injected via logs.js -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding Tutorial Overlay & Spotlight -->
+    <div id="tutorial-overlay" class="tutorial-overlay">
+        <div id="tutorial-spotlight" class="tutorial-spotlight"></div>
+        <div id="tutorial-popover" class="tutorial-popover">
+            <div class="popover-header">
+                <div class="popover-badge">
+                    <i data-lucide="sparkles" style="width: 14px; height: 14px; color: #22c55e;"></i>
+                    <span id="tutorial-step-counter">Step 1 of 7</span>
+                </div>
+                <button class="popover-close" onclick="window.verdeUI.endTutorialTour()" title="Close Tour">
+                    <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+            <div class="popover-body">
+                <h3 class="popover-title" id="tutorial-step-title">Welcome to VERDE</h3>
+                <p class="popover-description" id="tutorial-step-desc">Loading tutorial...</p>
+                <div class="popover-hint-box" id="tutorial-step-hint-box" style="display: none;">
+                    <i data-lucide="lightbulb" style="width: 14px; height: 14px; color: #ca8a04;"></i>
+                    <span id="tutorial-step-hint">Pro Tip: Try pressing ⌘+F to quickly search formulas.</span>
+                </div>
+            </div>
+            <div class="popover-footer">
+                <button class="btn btn-outline btn-sm" onclick="window.verdeUI.endTutorialTour()">Skip Tour</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-outline btn-sm" id="btn-tutorial-prev" onclick="window.verdeUI.prevTutorialStep()">Back</button>
+                    <button class="btn btn-primary btn-sm" id="btn-tutorial-next" onclick="window.verdeUI.nextTutorialStep()">Next Step <i data-lucide="arrow-right" style="width: 14px; height: 14px;"></i></button>
+                </div>
             </div>
         </div>
     </div>

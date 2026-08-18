@@ -167,9 +167,19 @@ class AlphaCandidate(Base):
 
     # Classification & Tiering
     tier = Column(String(50), default="TIER_1_PREFLIGHT_PENDING")
+    lifecycle_state = Column(String(50), default="GENERATED")  # GENERATED, PREFLIGHT, PREFLIGHT_REJECTED, QUEUED, SUBMITTED, SIMULATING, SIMULATION_FAILED, PORTFOLIO_EMPTY, PORTFOLIO_VALID, METRICS_EVALUATED, ROBUSTNESS_TESTING, ROBUST, NON_ROBUST, PARETO_EVALUATED, PROMISING, STRONG, ELITE, ARCHIVED
     is_pareto = Column(Boolean, default=False)
     pareto_rank = Column(Integer, nullable=True)
-    priority_bucket = Column(String(50), default="PROVEN")  # PROVEN, EXPLORED, NOVEL
+    priority_bucket = Column(String(50), default="PROVEN")  # PROVEN, EXPLORED, NOVEL, MUTATION, GAP_EXPLORATION, COMPOSITE
+
+    # Quality Engine V2 Scores & Rationale
+    pre_brain_score = Column(Float, nullable=True)
+    novelty_score = Column(Float, nullable=True)
+    alpha_quality_score = Column(Float, nullable=True)
+    robustness_score = Column(Float, nullable=True)
+    correlation_score = Column(Float, nullable=True)
+    experiment_id = Column(String(36), nullable=True, index=True)
+    explainability_rationale = Column(JSON, default=dict)
 
     # Lineage
     parent_id = Column(String(36), ForeignKey("alpha_candidates.id"), nullable=True)
@@ -486,3 +496,59 @@ class SystemEvent(Base):
     source = Column(String(100), default="VERDE_CORE")
     payload = Column(JSON, default=dict)
     created_at = Column(DateTime, default=get_utc_now)
+
+
+class ResearchExperiment(Base):
+    __tablename__ = "research_experiments"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    title = Column(String(200), nullable=False)
+    hypothesis = Column(Text, nullable=False)
+    family_code = Column(String(50), default="MOMENTUM")
+    target_budget = Column(Integer, default=50)
+    
+    # Exploration vs Exploitation Controls
+    exploitation_rate = Column(Float, default=0.40)
+    mutation_rate = Column(Float, default=0.20)
+    gap_exploration_rate = Column(Float, default=0.15)
+    composite_rate = Column(Float, default=0.10)
+    novelty_rate = Column(Float, default=0.15)
+
+    status = Column(String(50), default="ACTIVE")  # ACTIVE, COMPLETED, PAUSED
+    candidates_generated = Column(Integer, default=0)
+    candidates_rejected_preflight = Column(Integer, default=0)
+    candidates_submitted = Column(Integer, default=0)
+    portfolio_empty_count = Column(Integer, default=0)
+    strong_alpha_count = Column(Integer, default=0)
+    elite_alpha_count = Column(Integer, default=0)
+    average_quality_score = Column(Float, nullable=True)
+
+    created_at = Column(DateTime, default=get_utc_now)
+    completed_at = Column(DateTime, nullable=True)
+
+
+class FieldBehaviorProfile(Base):
+    __tablename__ = "field_behavior_profiles"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    field_name = Column(String(100), unique=True, nullable=False)
+    category = Column(String(50), default="PRICE")
+    coverage = Column(Float, default=1.0)
+    cross_sectional_std = Column(Float, default=1.0)
+    temporal_std = Column(Float, default=1.0)
+    zero_ratio = Column(Float, default=0.0)
+    missing_ratio = Column(Float, default=0.0)
+    quality_score = Column(Float, default=85.0)
+    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+
+
+class AlphaCorrelation(Base):
+    __tablename__ = "alpha_correlations"
+
+    id = Column(String(36), primary_key=True, default=generate_uuid)
+    candidate_a_id = Column(String(36), ForeignKey("alpha_candidates.id"), nullable=False)
+    candidate_b_id = Column(String(36), ForeignKey("alpha_candidates.id"), nullable=False)
+    signal_correlation = Column(Float, nullable=True)
+    return_correlation = Column(Float, nullable=True)
+    created_at = Column(DateTime, default=get_utc_now)
+

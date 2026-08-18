@@ -175,9 +175,40 @@ export async function populateCandidateModal(candidateId) {
             <!-- Preflight & AST Architecture Details -->
             <div class="card" style="margin-bottom: 20px; padding: 18px; background: #ffffff;">
                 <h4 style="font-size: 13px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">
-                    <i data-lucide="shield-check" style="color: var(--verde-primary);"></i> Preflight Multi-Stage Validation
+                    <i data-lucide="shield-check" style="color: var(--verde-primary);"></i> Pre-BRAIN Quality Score & AST Architecture
                 </h4>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; font-size: 13px;">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; font-size: 13px; margin-bottom: 14px;">
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Pre-BRAIN Score</div>
+                        <div style="font-size: 15px; font-weight: 800; color: ${c.pre_brain_score >= 75 ? '#16a34a' : (c.pre_brain_score >= 65 ? '#ca8a04' : '#ef4444')}; margin-top: 2px;">
+                            ${c.pre_brain_score !== null && c.pre_brain_score !== undefined ? `${c.pre_brain_score}/100` : 'N/A'}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Lifecycle State</div>
+                        <div style="margin-top: 2px;">
+                            <span class="badge badge-success" style="font-size: 11px;">${c.lifecycle_state || 'PREFLIGHT'}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Strategy Allocation</div>
+                        <div style="font-size: 13px; font-weight: 700; color: var(--text-main); margin-top: 2px;">
+                            ${c.priority_bucket || 'EXPLOITATION'}
+                        </div>
+                    </div>
+                </div>
+
+                ${c.explainability_rationale && c.explainability_rationale.field_selection_rationale ? `
+                    <div style="background: #f8fafc; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); font-size: 12px; color: var(--text-main);">
+                        <div style="font-weight: 700; color: var(--verde-dark); margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
+                            <i data-lucide="help-circle" style="width: 13px; height: 13px;"></i> WHY THIS ALPHA?
+                        </div>
+                        <div style="margin-bottom: 3px;"><strong>Hypothesis:</strong> ${c.explainability_rationale.hypothesis || 'N/A'}</div>
+                        <div style="margin-bottom: 3px;"><strong>Field Rationale:</strong> ${c.explainability_rationale.field_selection_rationale}</div>
+                        <div><strong>Operator Rationale:</strong> ${c.explainability_rationale.operator_rationale}</div>
+                    </div>
+                ` : ''}
+            </div>
                     <div style="padding: 10px; background: #f8fafc; border-radius: var(--radius-sm);">
                         <div style="font-size: 11px; color: var(--text-muted);">Preflight Decision</div>
                         <div style="margin-top: 4px;">${preflightBadge}</div>

@@ -81,8 +81,28 @@ class AlphaScorer:
             "simplicity_component": round(simp_norm, 3),
             "complexity_penalty": comp_penalty,
             "is_target_passing": is_target_passing,
-            "is_candidate_ready": is_candidate_ready
+            "is_candidate_ready": is_candidate_ready,
+            "tier": AlphaScorer.classify_alpha_tier(total_score, is_candidate_ready, rob_norm)
         }
+
+    @staticmethod
+    def classify_alpha_tier(
+        total_score: Optional[float],
+        is_candidate_ready: bool,
+        robustness: float = 0.7,
+        correlation: float = 0.0
+    ) -> str:
+        """Classifies formal V2 Alpha Tiers: ELITE, STRONG, PROMISING, WEAK."""
+        if total_score is None:
+            return "UNKNOWN"
+        if total_score >= 85.0 and is_candidate_ready and robustness >= 0.75 and correlation <= 0.70:
+            return "ELITE"
+        if total_score >= 75.0 and is_candidate_ready:
+            return "STRONG"
+        if total_score >= 60.0:
+            return "PROMISING"
+        return "WEAK"
 
 
 alpha_scorer = AlphaScorer()
+

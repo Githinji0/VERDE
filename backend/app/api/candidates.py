@@ -173,15 +173,25 @@ async def get_candidate_details(candidate_id: str, db: AsyncSession = Depends(ge
 @router.post("/generate")
 async def generate_candidates(req: CandidateGenerateRequest, db: AsyncSession = Depends(get_db)):
     """Generates a batch of candidates for the given research family and runs preflight validation."""
-    results = await hypothesis_engine.generate_and_preflight_candidates(
-        family_code=req.family_code,
-        count=req.count,
-        proven_ratio=req.proven_ratio,
-        explored_ratio=req.explored_ratio,
-        novel_ratio=req.novel_ratio,
-        session=db
-    )
-    return {"generated_count": len(results), "candidates": results}
+    try:
+        results = await hypothesis_engine.generate_and_preflight_candidates(
+            family_code=req.family_code,
+            count=req.count,
+            proven_ratio=req.proven_ratio,
+            explored_ratio=req.explored_ratio,
+            novel_ratio=req.novel_ratio,
+            session=db
+        )
+        return {"generated_count": len(results), "candidates": results}
+    except Exception as e:
+        from backend.app.core.logging import verde_logger
+        verde_logger.log_event(
+            event="CANDIDATE_GENERATION_FAILED",
+            severity="ERROR",
+            component="CANDIDATES_API",
+            message=f"Candidate generation failed: {str(e)}"
+        )
+        raise HTTPException(status_code=500, detail=f"Generation failed: {str(e)}")
 
 
 @router.post("/{candidate_id}/validate")

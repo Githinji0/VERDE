@@ -928,3 +928,172 @@
 .chip-valid .chip-count { color: #16a34a; background: rgba(22, 163, 74, 0.1); }
 .chip-running .chip-count { color: #ca8a04; background: rgba(202, 138, 4, 0.1); }
 .chip-failed .chip-count { color: #ef4444; background: rgba(239, 68, 68, 0.1); }
+
+/* Onboarding Tutorial Overlay & Spotlight UI */
+.tutorial-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: transparent;
+    z-index: 999999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.tutorial-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.tutorial-spotlight {
+    position: absolute;
+    border-radius: var(--radius-md);
+    box-shadow: 0 0 0 9999px rgba(13, 22, 15, 0.68), 0 0 25px rgba(34, 197, 94, 0.5);
+    border: 2px solid #22c55e;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    z-index: 100000;
+}
+
+.tutorial-target-active {
+    position: relative !important;
+    z-index: 100001 !important;
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.35) !important;
+    transition: box-shadow 0.3s ease !important;
+}
+
+.sidebar-nav-highlight {
+    position: relative !important;
+    z-index: 100001 !important;
+    background: #f0fdf4 !important;
+    border: 1px solid #22c55e !important;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4) !important;
+    animation: pulseSidebarHighlight 1.5s infinite alternate !important;
+}
+
+.sidebar-nav-highlight span {
+    color: var(--verde-dark) !important;
+    font-weight: 700 !important;
+}
+
+.sidebar-nav-highlight i {
+    color: #22c55e !important;
+}
+
+@keyframes pulseSidebarHighlight {
+    0% { box-shadow: 0 0 8px rgba(34, 197, 94, 0.3); }
+    100% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.7); }
+}
+
+.tutorial-popover {
+    position: fixed !important;
+    width: 420px;
+    background-color: #ffffff !important;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45), 0 0 25px rgba(34, 197, 94, 0.25);
+    padding: 20px;
+    z-index: 99999999 !important;
+    transition: top 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+    animation: popoverFadeIn 0.35s ease forwards;
+}
+
+/* Override ApexCharts & Canvas Z-Index during tutorial tour */
+.apexcharts-canvas,
+.apexcharts-tooltip,
+.apexcharts-svg {
+    z-index: 1 !important;
+}
+
+@keyframes popoverFadeIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.popover-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: #f0fdf4;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--verde-dark);
+}
+
+.popover-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s ease;
+}
+
+.popover-close:hover {
+    color: var(--text-main);
+    background: #f1f5f9;
+}
+
+.popover-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 8px;
+    letter-spacing: -0.2px;
+}
+
+.popover-description {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.55;
+    margin-bottom: 14px;
+}
+
+.popover-hint-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+    background: #fffbe6;
+    border: 1px solid rgba(234, 179, 8, 0.3);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    color: #854d0e;
+    margin-bottom: 16px;
+    line-height: 1.45;
+}
+
+.popover-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid var(--border-light);
+}
+
+.btn-header-tour {
+    background: linear-gradient(135deg, #15803d, #22c55e);
+    color: #ffffff;
+    border: none;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.25);
+}
+
+.btn-header-tour:hover {
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.35);
+    transform: translateY(-1px);
+}
