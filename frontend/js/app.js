@@ -231,21 +231,41 @@ window.verdeUI = {
             splash.classList.remove("fade-out");
             runSplashBootSequence();
         }
-    }
+    },
+    dismissSplashScreen: () => dismissSplash()
 };
+
+function dismissSplash() {
+    const splash = document.getElementById("verde-splash-screen");
+    if (!splash || splash.style.display === "none") return;
+    splash.classList.add("fade-out");
+    setTimeout(() => {
+        splash.style.display = "none";
+    }, 400);
+}
 
 function runSplashBootSequence() {
     const splash = document.getElementById("verde-splash-screen");
+    if (!splash) return;
+
+    // Guaranteed hard safety timeout: dismiss within 900ms under all conditions
+    const safetyTimer = setTimeout(() => {
+        dismissSplash();
+    }, 900);
+
+    // Instant manual dismiss on click
+    splash.onclick = () => {
+        clearTimeout(safetyTimer);
+        dismissSplash();
+    };
+
     const bar = document.getElementById("splash-bar");
     const statusText = document.getElementById("splash-status-text");
 
-    if (!splash) return;
-
     const steps = [
-        { pct: 25, text: "Initializing Quantitative AST Engine..." },
-        { pct: 50, text: "Loading Field Intelligence & 15 Family Registries..." },
-        { pct: 75, text: "Connecting Relational Database & Preflight Gates..." },
-        { pct: 95, text: "Synchronizing WorldQuant BRAIN Connection..." },
+        { pct: 30, text: "Initializing Quantitative AST Engine..." },
+        { pct: 60, text: "Loading Field Intelligence Registries..." },
+        { pct: 85, text: "Connecting Relational Database & Preflight Gates..." },
         { pct: 100, text: "VERDE Engine Ready." }
     ];
 
@@ -258,14 +278,10 @@ function runSplashBootSequence() {
             stepIdx++;
         } else {
             clearInterval(interval);
-            setTimeout(() => {
-                splash.classList.add("fade-out");
-                setTimeout(() => {
-                    splash.style.display = "none";
-                }, 550);
-            }, 250);
+            clearTimeout(safetyTimer);
+            setTimeout(dismissSplash, 120);
         }
-    }, 220);
+    }, 110);
 }
 
 function initApp() {
