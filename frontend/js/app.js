@@ -223,7 +223,7 @@ window.verdeUI = {
         else if (query.includes('ai') || query.includes('chat')) navigateTo('ai-lab');
         else if (query.includes('brain') || query.includes('auth')) navigateTo('brain-connection');
         else if (query.includes('log')) navigateTo('logs');
-    }
+    },
     showSplashScreen: () => {
         const splash = document.getElementById("verde-splash-screen");
         if (splash) {
