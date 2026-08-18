@@ -568,8 +568,9 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: #06110a !important;
-    background: #06110a radial-gradient(circle at 50% 40%, #0d2615 0%, #06110a 70%, #030a05 100%) !important;
+    background: rgba(15, 23, 42, 0.45) !important;
+    backdrop-filter: blur(18px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
     z-index: 999999;
     display: flex;
     flex-direction: column;
@@ -594,7 +595,13 @@
     align-items: center;
     text-align: center;
     max-width: 520px;
-    padding: 0 20px;
+    padding: 32px 40px;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    border-radius: 24px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     position: relative;
     z-index: 2;
 }
