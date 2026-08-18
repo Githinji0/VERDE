@@ -24,7 +24,7 @@
 </head>
 <body>
     <!-- Custom VERDE Splash Screen & Initialization Overlay -->
-    <div id="verde-splash-screen">
+    <div id="verde-splash-screen" onclick="this.classList.add('fade-out'); setTimeout(() => this.style.display='none', 200);">
         <div class="splash-content">
             <div class="splash-logo-wrapper">
                 <div class="splash-glow-ring"></div>
@@ -40,15 +40,28 @@
             
             <div class="splash-progress-container">
                 <div class="splash-progress-track">
-                    <div class="splash-progress-bar" id="splash-bar"></div>
+                    <div class="splash-progress-bar" id="splash-bar" style="width: 100%; transition: width 0.2s ease;"></div>
                 </div>
                 <div class="splash-telemetry-status" id="splash-status">
                     <i data-lucide="cpu" style="width: 14px; height: 14px; color: #22c55e;"></i>
-                    <span id="splash-status-text">Initializing Quantitative AST Engine...</span>
+                    <span id="splash-status-text">Engine Ready</span>
                 </div>
             </div>
         </div>
     </div>
+    <script>
+        (function() {
+            var splash = document.getElementById('verde-splash-screen');
+            if (splash) {
+                setTimeout(function() {
+                    splash.classList.add('fade-out');
+                    setTimeout(function() {
+                        splash.style.display = 'none';
+                    }, 250);
+                }, 350);
+            }
+        })();
+    </script>
 
     <div id="app-container">
         <!-- Sidebar Navigation -->

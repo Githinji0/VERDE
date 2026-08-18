@@ -241,47 +241,15 @@ function dismissSplash() {
     splash.classList.add("fade-out");
     setTimeout(() => {
         splash.style.display = "none";
-    }, 400);
+    }, 250);
 }
 
 function runSplashBootSequence() {
     const splash = document.getElementById("verde-splash-screen");
-    if (!splash) return;
+    if (!splash || splash.style.display === "none") return;
 
-    // Guaranteed hard safety timeout: dismiss within 900ms under all conditions
-    const safetyTimer = setTimeout(() => {
-        dismissSplash();
-    }, 900);
-
-    // Instant manual dismiss on click
-    splash.onclick = () => {
-        clearTimeout(safetyTimer);
-        dismissSplash();
-    };
-
-    const bar = document.getElementById("splash-bar");
-    const statusText = document.getElementById("splash-status-text");
-
-    const steps = [
-        { pct: 30, text: "Initializing Quantitative AST Engine..." },
-        { pct: 60, text: "Loading Field Intelligence Registries..." },
-        { pct: 85, text: "Connecting Relational Database & Preflight Gates..." },
-        { pct: 100, text: "VERDE Engine Ready." }
-    ];
-
-    let stepIdx = 0;
-    const interval = setInterval(() => {
-        if (stepIdx < steps.length) {
-            const s = steps[stepIdx];
-            if (bar) bar.style.width = `${s.pct}%`;
-            if (statusText) statusText.textContent = s.text;
-            stepIdx++;
-        } else {
-            clearInterval(interval);
-            clearTimeout(safetyTimer);
-            setTimeout(dismissSplash, 120);
-        }
-    }, 110);
+    // Hard safety timeout: guaranteed dismiss within 350ms
+    setTimeout(dismissSplash, 350);
 }
 
 function initApp() {

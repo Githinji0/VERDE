@@ -578,13 +578,13 @@
     font-family: 'Quicksand', sans-serif;
     color: #ffffff;
     opacity: 1;
-    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    transition: opacity 0.25s ease-out, transform 0.25s ease-out;
     cursor: pointer;
 }
 
 #verde-splash-screen.fade-out {
     opacity: 0;
-    transform: scale(1.04);
+    transform: scale(1.02);
     pointer-events: none;
 }
 
