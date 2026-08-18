@@ -31,6 +31,12 @@ async function apiRequest(endpoint, options = {}) {
 }
 
 export const api = {
+    // Generic HTTP helpers
+    get: (endpoint) => apiRequest(endpoint, { method: "GET" }),
+    post: (endpoint, body) => apiRequest(endpoint, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+    put: (endpoint, body) => apiRequest(endpoint, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+    delete: (endpoint) => apiRequest(endpoint, { method: "DELETE" }),
+
     // BRAIN
     getBrainHealth: () => apiRequest("/api/brain/health"),
     testBrainAuth: (creds) => apiRequest("/api/brain/auth/test", { method: "POST", body: JSON.stringify(creds) }),
