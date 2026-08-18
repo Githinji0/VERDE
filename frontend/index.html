@@ -23,6 +23,33 @@
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 <body>
+    <!-- Custom VERDE Splash Screen & Initialization Overlay -->
+    <div id="verde-splash-screen">
+        <div class="splash-content">
+            <div class="splash-logo-wrapper">
+                <div class="splash-glow-ring"></div>
+                <div class="splash-logo-badge">
+                    <div class="splash-logo-bar"></div>
+                    <div class="splash-logo-bar"></div>
+                    <div class="splash-logo-bar"></div>
+                </div>
+            </div>
+            <h1 class="splash-title">VERDE</h1>
+            <div class="splash-acronym">Validation, Exploration & Research-driven Discovery Engine</div>
+            <div class="splash-subtitle">WorldQuant BRAIN Quantitative Alpha Generation & Research Platform</div>
+            
+            <div class="splash-progress-container">
+                <div class="splash-progress-track">
+                    <div class="splash-progress-bar" id="splash-bar"></div>
+                </div>
+                <div class="splash-telemetry-status" id="splash-status">
+                    <i data-lucide="cpu" style="width: 14px; height: 14px; color: #22c55e;"></i>
+                    <span id="splash-status-text">Initializing Quantitative AST Engine...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="app-container">
         <!-- Sidebar Navigation -->
         <aside id="sidebar">

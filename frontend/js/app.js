@@ -224,9 +224,54 @@ window.verdeUI = {
         else if (query.includes('brain') || query.includes('auth')) navigateTo('brain-connection');
         else if (query.includes('log')) navigateTo('logs');
     }
+    showSplashScreen: () => {
+        const splash = document.getElementById("verde-splash-screen");
+        if (splash) {
+            splash.style.display = "flex";
+            splash.classList.remove("fade-out");
+            runSplashBootSequence();
+        }
+    }
 };
 
+function runSplashBootSequence() {
+    const splash = document.getElementById("verde-splash-screen");
+    const bar = document.getElementById("splash-bar");
+    const statusText = document.getElementById("splash-status-text");
+
+    if (!splash) return;
+
+    const steps = [
+        { pct: 25, text: "Initializing Quantitative AST Engine..." },
+        { pct: 50, text: "Loading Field Intelligence & 15 Family Registries..." },
+        { pct: 75, text: "Connecting Relational Database & Preflight Gates..." },
+        { pct: 95, text: "Synchronizing WorldQuant BRAIN Connection..." },
+        { pct: 100, text: "VERDE Engine Ready." }
+    ];
+
+    let stepIdx = 0;
+    const interval = setInterval(() => {
+        if (stepIdx < steps.length) {
+            const s = steps[stepIdx];
+            if (bar) bar.style.width = `${s.pct}%`;
+            if (statusText) statusText.textContent = s.text;
+            stepIdx++;
+        } else {
+            clearInterval(interval);
+            setTimeout(() => {
+                splash.classList.add("fade-out");
+                setTimeout(() => {
+                    splash.style.display = "none";
+                }, 550);
+            }, 250);
+        }
+    }, 220);
+}
+
 function initApp() {
+    // Run Splash Screen Telemetry Sequence
+    runSplashBootSequence();
+
     // Bind navigation clicks
     document.querySelectorAll(".nav-item").forEach(item => {
         item.addEventListener("click", () => {
