@@ -12,6 +12,7 @@ import { renderBrainConnection } from './brain_connection.js';
 import { renderLogs, populateDiagnosticModal } from './logs.js';
 import { renderSettings } from './settings.js';
 import { renderQualityDashboard } from './quality_dashboard.js';
+import { renderDocs } from './docs.js';
 import { onboardingEngine } from './tutorial.js';
 import { showToast, loadSavedUserUI, updateUserUI, syncBrainStatus, renderTabSkeleton } from './utils.js';
 
@@ -30,6 +31,7 @@ const routes = {
     'ai-lab': { title: 'AI Assistant', render: renderAILab },
     'brain-connection': { title: 'BRAIN Connection', render: renderBrainConnection },
     'logs': { title: 'Audit Logs', render: renderLogs },
+    'docs': { title: 'Documentation & Guide', render: renderDocs },
     'settings': { title: 'Settings', render: renderSettings }
 };
 
