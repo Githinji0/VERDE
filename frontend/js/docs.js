@@ -8,17 +8,17 @@ export async function renderDocs(container) {
     container.innerHTML = `
         <div class="docs-container" style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px;">
             <!-- Top Hero Banner & Search -->
-            <div class="card" style="background: linear-gradient(135deg, #09120b 0%, #142817 100%); color: #ffffff; padding: 28px 32px; border-radius: var(--radius-lg); margin-bottom: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <div class="card" style="background: #ffffff; border: 1px solid var(--border-color); color: var(--text-main); padding: 28px 32px; border-radius: var(--radius-lg); margin-bottom: 24px; box-shadow: var(--shadow-card);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 20px;">
                     <div>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                            <span class="badge" style="background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); font-size: 11px; font-weight: 700;">DOCUMENTATION & WORKING GUIDE</span>
-                            <span class="badge" style="background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.4); font-size: 11px; font-weight: 700;">VERDE V2.4</span>
+                            <span class="badge" style="background: #f0fdf4; color: #16a34a; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 11px; font-weight: 700;">DOCUMENTATION & WORKING GUIDE</span>
+                            <span class="badge" style="background: #e0f2fe; color: #0284c7; border: 1px solid rgba(2, 132, 199, 0.3); font-size: 11px; font-weight: 700;">VERDE V2.4</span>
                         </div>
-                        <h1 style="font-size: 26px; font-weight: 800; color: #ffffff; margin: 0 0 8px 0; letter-spacing: -0.5px;">
+                        <h1 style="font-size: 26px; font-weight: 800; color: var(--text-main); margin: 0 0 8px 0; letter-spacing: -0.5px;">
                             VERDE Alpha Research Engine Working Manual
                         </h1>
-                        <p style="font-size: 13.5px; color: #94a3b8; margin: 0; max-width: 720px; line-height: 1.5;">
+                        <p style="font-size: 13.5px; color: var(--text-muted); margin: 0; max-width: 720px; line-height: 1.5;">
                             Complete technical reference guide explaining the 10-Stage Experiment Lifecycle, Decoupled Candidate State Machine, Pre-BRAIN Quality Engine V2, 3-Tier Redundancy Engine, FastExpr formula recipes, and FAQ.
                         </p>
                     </div>
@@ -30,10 +30,10 @@ export async function renderDocs(container) {
                 </div>
 
                 <!-- Instant Search & Quick Category Filter Bar -->
-                <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
+                <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; gap: 14px; align-items: center;">
                     <div style="position: relative; flex: 1; min-width: 280px;">
-                        <i data-lucide="search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
-                        <input type="text" id="docs-search-input" placeholder="Search documentation, operators (e.g. ts_rank), metrics, or FAQs..." style="width: 100%; padding: 10px 14px 10px 40px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); border-radius: var(--radius-md); color: #ffffff; font-size: 13px; outline: none; transition: all 0.2s;" onkeyup="window.filterDocsContent(this.value)">
+                        <i data-lucide="search" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
+                        <input type="text" id="docs-search-input" placeholder="Search documentation, operators (e.g. ts_rank), metrics, or FAQs..." style="width: 100%; padding: 10px 14px 10px 40px; background: #f8fafc; border: 1px solid var(--border-light); border-radius: var(--radius-md); color: var(--text-main); font-size: 13px; outline: none; transition: all 0.2s;" onkeyup="window.filterDocsContent(this.value)">
                     </div>
                     <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="docs-category-pills">
                         <button class="pill-filter-btn active" onclick="window.filterDocsCategory('all', this)">All Topics</button>
