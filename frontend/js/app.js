@@ -62,6 +62,9 @@ async function navigateTo(page) {
         // Render tab loading skeleton before fetching route content
         renderTabSkeleton(container);
 
+        // Guarantee smooth visible loading skeleton shimmer transition during tab switching
+        await new Promise(resolve => setTimeout(resolve, 220));
+
         try {
             await routes[page].render(container);
         } catch (err) {
